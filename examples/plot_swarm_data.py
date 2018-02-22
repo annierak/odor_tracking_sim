@@ -22,12 +22,12 @@ plt.ylabel('count')
 plt.title('time trapped (all traps)')
 
 plt.figure(2)
-ax1 = plt.subplot2grid((4,3),(1,2))
-ax2 = plt.subplot2grid((4,3),(0,1))
-ax3 = plt.subplot2grid((4,3),(1,0))
-ax4 = plt.subplot2grid((4,3),(2,0))
-ax5 = plt.subplot2grid((4,3),(3,1))
-ax6 = plt.subplot2grid((4,3),(2,2))
+ax1 = plt.subplot2grid((3,4),(1,3))
+ax2 = plt.subplot2grid((3,4),(0,2))
+ax3 = plt.subplot2grid((3,4),(0,1))
+ax4 = plt.subplot2grid((3,4),(1,0))
+ax5 = plt.subplot2grid((3,4),(2,1))
+ax6 = plt.subplot2grid((3,4),(2,2))
 trap_axes = [ax1,ax2,ax3,ax4,ax5,ax6]
 
 
@@ -44,5 +44,11 @@ for i in range(len(trap_num_list)):
     ax = trap_axes[i]
     ax.set_ylim(0,top)
     #plt.title('time trapped, trap_num = {0}'.format(num))
+
+trap_counts = swarm.get_trap_counts()
+ax7 = plt.subplot2grid((3,4),(1,1),colspan=2,polar=True)
+borders = -scipy.pi/(len(trap_num_list))+2*scipy.pi/(len(trap_num_list))*scipy.linspace(0,len(trap_num_list)-1,len(trap_num_list))
+print borders/scipy.pi
+ax7.bar(borders,trap_counts,align='edge',width=2*scipy.pi/(len(trap_num_list)))
 
 plt.show()

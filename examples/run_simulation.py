@@ -10,7 +10,7 @@ import odor_tracking_sim.utility as utility
 
 output_file = 'swarm_data.pkl'
 
-# Create field, constant velocity, etc. 
+# Create field, constant velocity, etc.
 wind_param = {
         'speed': 0.5,
         'angle': 25.0*scipy.pi/180.0,
@@ -19,7 +19,7 @@ wind_field = wind_models.ConstantWindField(param=wind_param)
 
 # Create circular odor field, set source locations and strengths
 number_sources = 6
-radius_sources = 1000.0 
+radius_sources = 1000.0
 strength_sources = 10.0
 location_list, strength_list = utility.create_circle_of_sources(
         number_sources,
@@ -28,7 +28,7 @@ location_list, strength_list = utility.create_circle_of_sources(
         )
 
 
-## Create grid of odors, set source locations and strengths 
+## Create grid of odors, set source locations and strengths
 #x_num = 4
 #y_num = 3
 #x_range = (-1000,1000)
@@ -38,19 +38,20 @@ location_list, strength_list = utility.create_circle_of_sources(
 
 # Create scalar odor concentration field
 odor_param = {
-        'wind_field'       : wind_field, 
+        'wind_field'       : wind_field,
         'diffusion_coeff'  :  0.25,
-        'source_locations' : location_list, 
+        'source_locations' : location_list,
         'source_strengths' : strength_list,
         'epsilon'          : 0.01,
-        'trap_radius'      : 100.0
+        'trap_radius'      : 5.0
         }
 odor_field = odor_models.FakeDiffusionOdorField(odor_param)
 
 # Create swarm of flies
-swarm_size = 5000
+swarm_size = 10000
 swarm_param = {
-        'initial_heading'     : scipy.radians(scipy.random.uniform(0.0,360.0,(swarm_size,))),
+    #    'initial_heading'     : scipy.radians(scipy.random.uniform(0.0,360.0,(swarm_size,))),
+        'initial_heading'     : scipy.random.vonmises(25.0*scipy.pi/180.0,2,(swarm_size,)),
         'x_start_position'    : scipy.zeros((swarm_size,)),
         'y_start_position'    : scipy.zeros((swarm_size,)),
         'heading_error_std'   : scipy.radians(10.0),
@@ -62,20 +63,20 @@ swarm_param = {
         'wind_slippage'       : 0.0,
         'odor_thresholds'     : {
             'lower': 0.002,
-            'upper': 0.004
+            'upper': 0.02
             },
         'odor_probabilities'  : {
             'lower': 0.9,    # detection probability/sec of exposure
             'upper': 0.002,  # detection probability/sec of exposure
-            } 
-        } 
+            }
+        }
 swarm = swarm_models.BasicSwarmOfFlies(param=swarm_param)
 
 # Setup live plot
 fignum = 1
 plot_scale = 2.0
 plot_size = plot_scale*radius_sources
-plot_param = { 
+plot_param = {
         'xlim' : (-plot_size, plot_size),
         'ylim' : (-plot_size, plot_size),
         'xnum' : 500,
@@ -104,7 +105,7 @@ t = 0.0
 dt = 0.25
 t_stop = 10000.0
 dt_plot = 10.0
-t_plot_last = 0.0 
+t_plot_last = 0.0
 
 #raw_input('begin?')
 
@@ -147,5 +148,3 @@ with open(output_file, 'w') as f:
     pickle.dump(swarm,f)
 
 #ans = raw_input('done')
-
-

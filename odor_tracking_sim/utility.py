@@ -48,7 +48,7 @@ def distance(p,q):
     return scipy.sqrt((p[0]-q[0])**2 + (p[1]-q[1])**2)
 
 
-def unit_vector(x,y): 
+def unit_vector(x,y):
     v_mag = scipy.sqrt(x**2 + y**2)
     if type(v_mag) == scipy.ndarray:
         mask = v_mag > 0
@@ -69,14 +69,12 @@ def unit_vector(x,y):
 def logistic(x,x0,k):
     return 1.0/(1.0 + scipy.exp(-k*(x-x0)))
 
+def test_function(x):
+    return x
+
 
 # Testing/development
 # --------------------------------------------------------------------
 if __name__ == '__main__':
 
     pass
-
-
-
-
-

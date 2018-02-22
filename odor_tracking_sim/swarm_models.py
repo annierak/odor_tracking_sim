@@ -5,6 +5,7 @@ from utility import unit_vector
 from utility import rotate_vecs
 from utility import distance
 
+
 class BasicSwarmOfFlies(object):
 
     """

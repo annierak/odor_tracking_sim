@@ -27,13 +27,14 @@ location_list, strength_list = utility.create_circle_of_sources(
         strength_sources
         )
 
+
 ## Create grid of odors, set source locations and strengths 
 #x_num = 4
 #y_num = 3
 #x_range = (-1000,1000)
 #y_range = (-800, 800)
 #strength_sources = 10.0
-#location_list, strength_list = create_grid_of_sources(x_num, y_num, x_range, y_range, strength_sources)
+#location_list, strength_list = utility.create_grid_of_sources(x_num, y_num, x_range, y_range, strength_sources)
 
 # Create scalar odor concentration field
 odor_param = {
@@ -42,7 +43,7 @@ odor_param = {
         'source_locations' : location_list, 
         'source_strengths' : strength_list,
         'epsilon'          : 0.01,
-        'trap_radius'      : 50.0
+        'trap_radius'      : 100.0
         }
 odor_field = odor_models.FakeDiffusionOdorField(odor_param)
 
@@ -56,7 +57,7 @@ swarm_param = {
         'flight_speed'        : scipy.full((swarm_size,), 0.7),
         #'flight_speed'        : scipy.random.uniform(0.3,1.0,(swarm_size,)),
         'release_time'        : scipy.full((swarm_size,), 0.0),
-        'release_time'        : scipy.random.exponential(300,(swarm_size,)),
+        #'release_time'        : scipy.random.exponential(300,(swarm_size,)),
         'cast_interval'       : [60.0, 1000.0],
         'wind_slippage'       : 0.0,
         'odor_thresholds'     : {
@@ -101,7 +102,7 @@ plt.pause(0.0001)
 
 t = 0.0
 dt = 0.25
-t_stop = 20000.0
+t_stop = 10000.0
 dt_plot = 10.0
 t_plot_last = 0.0 
 

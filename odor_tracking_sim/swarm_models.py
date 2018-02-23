@@ -1,5 +1,6 @@
 from __future__ import print_function
 import scipy
+import scipy.stats
 
 from utility import unit_vector
 from utility import rotate_vecs
@@ -15,6 +16,7 @@ class BasicSwarmOfFlies(object):
 
     DefaultSize = 500
     DefaultParam = {
+            'initial_heading_dist': scipy.stats.uniform(0,2*scipy.pi), #continuous_distribution object
             'initial_heading'     : scipy.radians(scipy.random.uniform(0.0,360.0,(DefaultSize,))),
             'x_start_position'    : scipy.zeros((DefaultSize,)),
             'y_start_position'    : scipy.zeros((DefaultSize,)),

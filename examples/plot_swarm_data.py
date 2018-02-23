@@ -40,15 +40,30 @@ for i,num in enumerate(trap_num_list):
     ax.set_xlabel('(s)')
     ax.set_ylabel('trap:{0}'.format(num))
 top = max(peak_counts)
+trap_counts = swarm.get_trap_counts()
 for i in range(len(trap_num_list)):
     ax = trap_axes[i]
     ax.set_ylim(0,top)
+    xmin,xmax = ax.get_xlim()
+    ax.text(xmin+(xmax-xmin)/2,top/2,str(trap_counts[i]))
     #plt.title('time trapped, trap_num = {0}'.format(num))
 
-trap_counts = swarm.get_trap_counts()
-ax7 = plt.subplot2grid((3,4),(1,1),colspan=2,polar=True)
-borders = -scipy.pi/(len(trap_num_list))+2*scipy.pi/(len(trap_num_list))*scipy.linspace(0,len(trap_num_list)-1,len(trap_num_list))
-print borders/scipy.pi
-ax7.bar(borders,trap_counts,align='edge',width=2*scipy.pi/(len(trap_num_list)))
+
+ax7 = plt.subplot2grid((3,4),(1,1),polar=True)
+headings = swarm.param['initial_heading']
+heading_dist = swarm.param['initial_heading_dist']
+heading_mean = heading_dist.mean()
+(n,bins,patches) = ax7.hist(headings,bins=100)
+ax7.set_yticks([])
+r = max(n)
+ax7.set_ylim((0,r))
+ax7.arrow(heading_mean,0,0,0.5*r, width = 0.015,edgecolor = 'red',
+facecolor = 'red', lw = 2, zorder = 1,head_width=0.2,head_length=30)
+#ax7.arrow(0,0,r*scipy.cos(heading_mean),r*scipy.sin(heading_mean),color='red',lw=4)
+
+ax8 = plt.subplot2grid((3,4),(1,2))
+angles = scipy.linspace(heading_mean-scipy.pi,heading_mean+scipy.pi,400)
+ax8.plot(angles,heading_dist.pdf(angles))
+ax8.set_xlabel('Variance = '+str(round(heading_dist.var(),3)))
 
 plt.show()

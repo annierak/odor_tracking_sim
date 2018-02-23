@@ -13,7 +13,7 @@ output_file = 'swarm_data.pkl'
 # Create field, constant velocity, etc.
 wind_param = {
         'speed': 0.5,
-        'angle': 25.0*scipy.pi/180.0,
+        'angle': 30.0*scipy.pi/180.0,
         }
 wind_field = wind_models.ConstantWindField(param=wind_param)
 
@@ -51,7 +51,8 @@ odor_field = odor_models.FakeDiffusionOdorField(odor_param)
 swarm_size = 10000
 swarm_param = {
     #    'initial_heading'     : scipy.radians(scipy.random.uniform(0.0,360.0,(swarm_size,))),
-        'initial_heading'     : scipy.random.vonmises(25.0*scipy.pi/180.0,2,(swarm_size,)),
+        'initial_heading_dist': scipy.stats.vonmises(loc=30.0*scipy.pi/180.0,kappa=2),
+        'initial_heading'     : scipy.random.vonmises(30.0*scipy.pi/180.0,2,(swarm_size,)),
         'x_start_position'    : scipy.zeros((swarm_size,)),
         'y_start_position'    : scipy.zeros((swarm_size,)),
         'heading_error_std'   : scipy.radians(10.0),
@@ -103,7 +104,7 @@ plt.pause(0.0001)
 
 t = 0.0
 dt = 0.25
-t_stop = 10000.0
+t_stop = 5000.0
 dt_plot = 10.0
 t_plot_last = 0.0
 

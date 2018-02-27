@@ -1,3 +1,5 @@
+'''run_and_save.py has updates this doesn't. ''''
+
 import time
 import scipy
 import matplotlib.pyplot as plt
@@ -11,9 +13,10 @@ import odor_tracking_sim.utility as utility
 output_file = 'swarm_data.pkl'
 
 # Create field, constant velocity, etc.
+wind_angle = 15.0*scipy.pi/180.0
 wind_param = {
         'speed': 0.5,
-        'angle': 30.0*scipy.pi/180.0,
+        'angle': wind_angle,
         }
 wind_field = wind_models.ConstantWindField(param=wind_param)
 
@@ -49,17 +52,20 @@ odor_field = odor_models.FakeDiffusionOdorField(odor_param)
 
 # Create swarm of flies
 swarm_size = 10000
+kappa = 2 #for initial heading distribution
+beta = 50 #time constant for release time distribution
 swarm_param = {
     #    'initial_heading'     : scipy.radians(scipy.random.uniform(0.0,360.0,(swarm_size,))),
-        'initial_heading_dist': scipy.stats.vonmises(loc=30.0*scipy.pi/180.0,kappa=2),
-        'initial_heading'     : scipy.random.vonmises(30.0*scipy.pi/180.0,2,(swarm_size,)),
+        'initial_heading_dist': scipy.stats.vonmises(loc=wind_angle,kappa=kappa),
+        'initial_heading'     : scipy.random.vonmises(wind_angle,kappa,(swarm_size,)),
         'x_start_position'    : scipy.zeros((swarm_size,)),
         'y_start_position'    : scipy.zeros((swarm_size,)),
         'heading_error_std'   : scipy.radians(10.0),
         'flight_speed'        : scipy.full((swarm_size,), 0.7),
         #'flight_speed'        : scipy.random.uniform(0.3,1.0,(swarm_size,)),
-        'release_time'        : scipy.full((swarm_size,), 0.0),
-        #'release_time'        : scipy.random.exponential(300,(swarm_size,)),
+        #'release_time'        : scipy.full((swarm_size,), 0.0),
+        'release_time'        : scipy.random.exponential(beta,(swarm_size,)),
+        'release_time_constant': beta,
         'cast_interval'       : [60.0, 1000.0],
         'wind_slippage'       : 0.0,
         'odor_thresholds'     : {
@@ -97,14 +103,14 @@ plt.figure(fignum)
 fly_dots, = plt.plot(swarm.x_position, swarm.y_position,'.r')
 
 fig.canvas.flush_events()
-plt.pause(0.0001)
+plt.pause(0.001)
 
 # Experiment mail loop
 # ------------------------------------------------------------------------------------
 
 t = 0.0
 dt = 0.25
-t_stop = 5000.0
+t_stop = 15000.0
 dt_plot = 10.0
 t_plot_last = 0.0
 

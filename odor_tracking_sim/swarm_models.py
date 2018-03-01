@@ -55,6 +55,8 @@ class BasicSwarmOfFlies(object):
         self.heading_error = scipy.zeros((self.size,))
         self.t_last_cast = scipy.zeros((self.size,))
 
+        self.increments_until_turn = scipy.ones((self.size,)) #This is for the Levy walk option.
+
         cast_interval = self.param['cast_interval']
         self.dt_next_cast = scipy.random.uniform(cast_interval[0], cast_interval[0], (self.size,))
         self.cast_sign = scipy.random.choice([-1,1],(self.size,))
@@ -66,7 +68,10 @@ class BasicSwarmOfFlies(object):
         self.y_trap_loc = scipy.zeros((self.size,))
         self.t_in_trap = scipy.full((self.size,),scipy.inf)
         self.start_type = start_type #Either 'fh' (fixed heading) or 'rw' (random walk)
-
+        if start_type=='rw':
+            self.rw_dist = scipy.stats.lognorm(0.25,scale=1)
+        else:
+            self.rw_dist = None
 
     def check_param(self):
         """
@@ -129,13 +134,49 @@ class BasicSwarmOfFlies(object):
             mask_move = mask_release & (~mask_trapped) & (~mask_startmode)
             self.x_position[mask_move] += dt*self.x_velocity[mask_move]
             self.y_position[mask_move] += dt*self.y_velocity[mask_move]
-            #For those in startmode, the x step and y step of each fly is chosen from distribution whose variance is dt*velocity
-            variance = dt*abs(self.param['flight_speed'])[0]
+            '''Option 1: path lengths are chosen from a heavy-tailed distribution'''
+            '''For those in startmode, the x step and y step of each fly is chosen from lognormal (heavy-tailed) distribution
+            right now the distribution is manually set up so that moving faster than peak velocity (1.8 m/s) happens with close to
+            0 probability: the distribution is lognormal with sigma = 0.25 and mu = 0, and then *(1.8/2.0)*timestep'''
+            sigma = 0.25
+            mu = 0
+            scaling_factor = (1.8/2.0)*dt #So that 1.8 m/s is the fastest it ever flies
             draws = sum(mask_startmode)
-            self.x_position[mask_startmode] += scipy.stats.norm.rvs(size=draws,scale=variance)
-            self.y_position[mask_startmode] += scipy.stats.norm.rvs(size=draws,scale=variance)
-        #Apply wind slippage to everyone in both cases
+            self.x_position[mask_startmode] += scaling_factor*scipy.random.choice([1,-1],
+                size=draws)*scipy.stats.lognorm.rvs(sigma,size=draws,scale=scipy.exp(mu))
+            self.y_position[mask_startmode] += scaling_factor*scipy.random.choice([1,-1],
+                size=draws)*scipy.stats.lognorm.rvs(sigma,size=draws,scale=scipy.exp(mu))
+        elif self.start_type=='cvrw':
+            #All flies update position according to velocity, including start_mode flies
             mask_move = mask_release & (~mask_trapped)
+            self.x_position[mask_move] += dt*self.x_velocity[mask_move]
+            self.y_position[mask_move] += dt*self.y_velocity[mask_move]
+            '''Option 2: Durations of a given direction are chosen from a heavy-tailed distribution
+            Draw from same kind of distribution as above, but round up for discrete time steps.
+            Distribution is lognormal with sigma = 0.5 and mu = 0, and then *(300/3.0)/timestep,
+            which makes the max occuring duration around 300 s= 5 min.'''
+            sigma = 0.5
+            mu = 0.
+            #Every fly
+
+            #Every startmode fly has one time step less left in current direction
+            self.increments_until_turn[mask_startmode&mask_move] -=1
+            #print(self.increments_until_turn[mask_startmode&mask_move])
+            #Flies whose time is up get assigned a new direction --> x and y velocity
+            mask_redraw = mask_move&mask_startmode & (self.increments_until_turn == 0)
+            if sum(mask_redraw)>0:
+                directions = scipy.radians(scipy.random.uniform(0.0,360.0,(sum(mask_redraw),)))
+                self.x_velocity[mask_redraw]=self.param['flight_speed'][0]*scipy.cos(directions)
+                self.y_velocity[mask_redraw]=self.param['flight_speed'][0]*scipy.sin(directions)
+                #and get assigned a new interval count until they change direction again
+                self.increments_until_turn[mask_redraw] = scipy.floor(
+                    scipy.stats.lognorm.rvs(sigma,size=sum(mask_redraw),scale=
+                    (300/3.0)/dt*
+                    scipy.exp(mu)))
+
+
+        #Apply wind slippage to everyone in both cases
+        mask_move = mask_release & (~mask_trapped)
         self.x_position[mask_move] += dt*self.param['wind_slippage']*x_wind[mask_move]
         self.y_position[mask_move] += dt*self.param['wind_slippage']*y_wind[mask_move]
 

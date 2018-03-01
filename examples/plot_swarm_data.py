@@ -3,7 +3,7 @@ import math
 import matplotlib.pyplot as plt
 import cPickle as pickle
 
-f = 'brownian'
+f = 'levy_walk'
 input_file = f+'.pkl'
 
 with open(input_file,'r') as f:

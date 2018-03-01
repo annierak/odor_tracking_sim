@@ -10,7 +10,9 @@ import odor_tracking_sim.odor_models as odor_models
 import odor_tracking_sim.swarm_models as swarm_models
 import odor_tracking_sim.utility as utility
 
-def run_sim(file_name,wind_angle,release_time_constant,kappa=2,t_stop=15000.0,display_speed=1,swarm_size=10000):
+def run_sim(file_name,wind_angle,release_time_constant,
+kappa=0.,t_stop=15000.0,display_speed=1,
+wind_slippage = 0.,swarm_size=10000,start_type='fh',upper_prob=0.002):
     output_file = file_name+'.pkl'
     wind_angle=wind_angle*scipy.pi/180.0
     wind_param = {
@@ -52,17 +54,17 @@ def run_sim(file_name,wind_angle,release_time_constant,kappa=2,t_stop=15000.0,di
             'release_time'        : scipy.random.exponential(beta,(swarm_size,)),
             'release_time_constant': beta,
             'cast_interval'       : [60.0, 1000.0],
-            'wind_slippage'       : 0.0,
+            'wind_slippage'       : wind_slippage,
             'odor_thresholds'     : {
                 'lower': 0.002,
                 'upper': 0.02
                 },
             'odor_probabilities'  : {
                 'lower': 0.9,    # detection probability/sec of exposure
-                'upper': 0.002,  # detection probability/sec of exposure
+                'upper': upper_prob,  # detection probability/sec of exposure
                 }
             }
-    swarm = swarm_models.BasicSwarmOfFlies(param=swarm_param,start_type='rw')
+    swarm = swarm_models.BasicSwarmOfFlies(param=swarm_param,start_type=start_type)
     # Setup live plot
     fignum = 1
     plot_scale = 2.0
@@ -94,7 +96,6 @@ def run_sim(file_name,wind_angle,release_time_constant,kappa=2,t_stop=15000.0,di
     t_plot_last = 0.0
 
     while t<t_stop:
-
         print('t: {0:1.2f}'.format(t))
         swarm.update(t,dt,wind_field,odor_field)
         t+= dt
@@ -123,6 +124,7 @@ def run_sim(file_name,wind_angle,release_time_constant,kappa=2,t_stop=15000.0,di
 
             fig.canvas.flush_events()
             t_plot_last = t
+            #plt.pause(5)
 
             #time.sleep(0.05)
 
@@ -131,4 +133,7 @@ def run_sim(file_name,wind_angle,release_time_constant,kappa=2,t_stop=15000.0,di
     with open(output_file, 'w') as f:
         pickle.dump(swarm,f)
 
-run_sim('brownian',25.,50.,t_stop=25000.,display_speed=1,swarm_size = 1000)
+run_sim('fh',25.,50.,t_stop=15000.,
+display_speed=1,swarm_size = 1000,start_type='fh',wind_slippage=1.,kappa=0.)
+
+raw_input('Done?')

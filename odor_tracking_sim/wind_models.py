@@ -6,7 +6,7 @@ class ConstantWindField(object):
     Super simple constant wind model specified by wind angle and speed.
     """
 
-    DefaultParam = { 'angle': 0.0, 'speed': 1.0 }
+    DefaultParam = { 'angle': 0.0, 'speed': 1.0, 'evolving':False }
 
     def __init__(self,param={}):
 
@@ -15,6 +15,7 @@ class ConstantWindField(object):
 
         self.angle = param['angle']
         self.speed = param['speed']
+        self.evolving = self.param['evolving']
 
     def value(self,t,x,y):
         vx = self.speed*scipy.cos(self.angle)
@@ -27,7 +28,3 @@ class ConstantWindField(object):
             return vx_array, vy_array
         else:
             return vx, vy
-
-
-
-

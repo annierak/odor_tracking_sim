@@ -43,7 +43,7 @@ class BasicSwarmOfFlies(object):
     Mode_Trapped = 3
 
 
-    def __init__(self,param={},start_type='fh'): #default start type is fixed heading
+    def __init__(self,wind_field,param={},start_type='fh'): #default start type is fixed heading
         self.param = dict(self.DefaultParam)
         self.param.update(param)
         self.check_param()
@@ -63,7 +63,8 @@ class BasicSwarmOfFlies(object):
         self.cast_sign = scipy.random.choice([-1,1],(self.size,))
 
         self.parallel_coeff,self.perp_coeff = self.param['wind_slippage']
-        self.
+        self.par_wind,self.perp_wind = self.get_par_perp_comps(0.,wind_field)
+        #^This is the set of 2 x time arrays of the components of each fly's velocity par/perp to wind
         self.ever_tracked = scipy.full((self.size,), False, dtype=bool) #Bool that keeps track if the fly ever plume tracked (false=never tracked)
         self.trap_num = scipy.full((self.size,),-1, dtype=int)
         self.in_trap = scipy.full((self.size,), False, dtype=bool)
@@ -187,18 +188,15 @@ class BasicSwarmOfFlies(object):
         #Michael's idea 2/27/18: apply wind slippage according to c_1*(component
         #parallel to fly's velocity) + c2*(component pe rp to fly's velocity)
 
-        if sum(mask_startmode)>0:
-            wind_par,wind_perp = self.get_par_perp_comps(mask_startmode,t,wind_field)
-            #tuples of vectors of the component of the wind parallel and perpendicular to
-            #the fly's velocity only for flys in startmode
-            c1 = self.parallel_coeff
-            c2 = self.perp_coeff
+        self.update_par_perp_comps(t,wind_field,mask_release,mask_startmode)
+        #par/perp comps for flys not {released and in fly mode} are set to 0.
+        c1 = self.parallel_coeff
+        c2 = self.perp_coeff
+        self.x_position += dt*(c1*self.par_wind[0,:]+c2*self.perp_wind[0,:])
+        self.y_position += dt*(c1*self.par_wind[1,:]+c2*self.perp_wind[1,:])
 
-#            self.x_position[mask_startmode] += dt*(c1*wind_par[0,mask_startmode]+c2*wind_perp[0,mask_startmode])
-#            self.y_position[mask_startmode] += dt*(c1*wind_par[1,mask_startmode]+c2*wind_perp[1,mask_startmode])
-
-            self.x_position[mask_startmode] += dt*(c1*wind_par[0,:]+c2*wind_perp[0,:])
-            self.y_position[mask_startmode] += dt*(c1*wind_par[1,:]+c2*wind_perp[1,:])
+#            self.x_position[mask_startmode] += dt*(c1*wind_par[0,:]+c2*wind_perp[0,:])
+#            self.y_position[mask_startmode] += dt*(c1*wind_par[1,:]+c2*wind_perp[1,:])
 
 
     def update_for_odor_detection(self, dt, odor, wind_uvecs, masks):
@@ -332,15 +330,21 @@ class BasicSwarmOfFlies(object):
         mask_trap_num_set = self.trap_num != -1
         (trap_num_array,trap_counts)=scipy.unique(self.trap_num[mask_trap_num_set],return_counts = True)
         return trap_counts
-    def get_par_perp_comps(self,mask,t,wind_field):
+    def get_par_perp_comps(self,t,wind_field):
         x_wind, y_wind = wind_field.value(t,self.x_position, self.y_position)
-        wind = scipy.array([x_wind[mask],y_wind[mask]])
-        velocity = scipy.array([self.x_velocity[mask],self.y_velocity[mask]])
-        par_vec = scipy.zeros((2,sum(mask)))
-        perp_vec = scipy.zeros((2,sum(mask)))
-        par_vec[:,0]=scipy.array([2,3])
-        for i in range(sum(mask)):
+        wind = scipy.array([x_wind,y_wind])
+        velocity = scipy.array([self.x_velocity,self.y_velocity])
+        par_vec = scipy.zeros(scipy.shape(velocity))
+        perp_vec = scipy.zeros(scipy.shape(velocity))
+        for i in range(scipy.size(velocity,1)):
             u,v = velocity[:,i],wind[:,i]
             par,perp = par_perp(v,u)
             par_vec[:,i],perp_vec[:,i] = par,perp
         return par_vec,perp_vec
+    def update_par_perp_comps(self,t,wind_field,mask_release,mask_startmode):
+        #Check if the wind field has changed since last time-step, if so, re-compute get_par_perp_comps
+        if wind_field.evolving:
+            self.par_wind,self.perp_wind = self.get_par_perp_comps(t,wind_field)
+        #Set the flys who have been release and who are not in start_mode to zero par and zero perp
+        self.par_wind[:,mask_release&~mask_startmode] = 0.
+        self.perp_wind[:,mask_release&~mask_startmode] = 0.

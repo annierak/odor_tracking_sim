@@ -69,8 +69,14 @@ def unit_vector(x,y):
 def logistic(x,x0,k):
     return 1.0/(1.0 + scipy.exp(-k*(x-x0)))
 
+def par_perp(u,v):
+    #Returns the components of u parallel to and perpendicular to v, as cartesian vectors.
+    par = (scipy.inner(u,v))/(scipy.inner(v,v))*v
+    perp = u - par
+    return par,perp
 def test_function(x):
     return x
+
 
 
 # Testing/development

@@ -5,6 +5,7 @@ import scipy.stats
 from utility import unit_vector
 from utility import rotate_vecs
 from utility import distance
+from utility import par_perp
 
 
 class BasicSwarmOfFlies(object):
@@ -25,7 +26,7 @@ class BasicSwarmOfFlies(object):
             'release_time'        : scipy.full((DefaultSize,), 0.0),
             'release_time_constant': None,
             'cast_interval'       : [60.0, 1000.0],
-            'wind_slippage'       : 0.0,
+            'wind_slippage'       : (0.0,0.0), #(// to fly's path, perp to fly's path)
             'odor_thresholds'     : {
                 'lower': 0.002,
                 'upper': 0.004
@@ -61,6 +62,8 @@ class BasicSwarmOfFlies(object):
         self.dt_next_cast = scipy.random.uniform(cast_interval[0], cast_interval[0], (self.size,))
         self.cast_sign = scipy.random.choice([-1,1],(self.size,))
 
+        self.parallel_coeff,self.perp_coeff = self.param['wind_slippage']
+        self.
         self.ever_tracked = scipy.full((self.size,), False, dtype=bool) #Bool that keeps track if the fly ever plume tracked (false=never tracked)
         self.trap_num = scipy.full((self.size,),-1, dtype=int)
         self.in_trap = scipy.full((self.size,), False, dtype=bool)
@@ -103,7 +106,7 @@ class BasicSwarmOfFlies(object):
         mask_castfor = mask_release & (self.mode == self.Mode_CastForOdor)
 
         #Keep track of which flies have never tracked
-        self.ever_tracked = self.ever_tracked | (mask_release & (self.mode == self.Mode_StartMode))
+        self.ever_tracked = self.ever_tracked | (mask_release & (self.mode == self.Mode_FlyUpWind)) #this is true if the fly has previously tracked or has been released and is now in upwind mode
 
         # Get odor value and wind vectors at current position and time
         odor = odor_field.value(t,self.x_position,self.y_position)
@@ -175,12 +178,27 @@ class BasicSwarmOfFlies(object):
                     scipy.exp(mu)))
 
 
-        #Apply wind slippage to everyone in both cases
-        mask_move = mask_release & (~mask_trapped)
-        self.x_position[mask_move] += dt*self.param['wind_slippage']*x_wind[mask_move]
-        self.y_position[mask_move] += dt*self.param['wind_slippage']*y_wind[mask_move]
+        #Original: apply wind slippage to all flies
+        #mask_move = mask_release & (~mask_trapped)
+        #ws = self.param['wind_slippage'][0]
+        #self.x_position[mask_move] += dt*ws*x_wind[mask_move]
+        #self.y_position[mask_move] += dt*ws*y_wind[mask_move]
 
+        #Michael's idea 2/27/18: apply wind slippage according to c_1*(component
+        #parallel to fly's velocity) + c2*(component pe rp to fly's velocity)
 
+        if sum(mask_startmode)>0:
+            wind_par,wind_perp = self.get_par_perp_comps(mask_startmode,t,wind_field)
+            #tuples of vectors of the component of the wind parallel and perpendicular to
+            #the fly's velocity only for flys in startmode
+            c1 = self.parallel_coeff
+            c2 = self.perp_coeff
+
+#            self.x_position[mask_startmode] += dt*(c1*wind_par[0,mask_startmode]+c2*wind_perp[0,mask_startmode])
+#            self.y_position[mask_startmode] += dt*(c1*wind_par[1,mask_startmode]+c2*wind_perp[1,mask_startmode])
+
+            self.x_position[mask_startmode] += dt*(c1*wind_par[0,:]+c2*wind_perp[0,:])
+            self.y_position[mask_startmode] += dt*(c1*wind_par[1,:]+c2*wind_perp[1,:])
 
 
     def update_for_odor_detection(self, dt, odor, wind_uvecs, masks):
@@ -314,3 +332,15 @@ class BasicSwarmOfFlies(object):
         mask_trap_num_set = self.trap_num != -1
         (trap_num_array,trap_counts)=scipy.unique(self.trap_num[mask_trap_num_set],return_counts = True)
         return trap_counts
+    def get_par_perp_comps(self,mask,t,wind_field):
+        x_wind, y_wind = wind_field.value(t,self.x_position, self.y_position)
+        wind = scipy.array([x_wind[mask],y_wind[mask]])
+        velocity = scipy.array([self.x_velocity[mask],self.y_velocity[mask]])
+        par_vec = scipy.zeros((2,sum(mask)))
+        perp_vec = scipy.zeros((2,sum(mask)))
+        par_vec[:,0]=scipy.array([2,3])
+        for i in range(sum(mask)):
+            u,v = velocity[:,i],wind[:,i]
+            par,perp = par_perp(v,u)
+            par_vec[:,i],perp_vec[:,i] = par,perp
+        return par_vec,perp_vec

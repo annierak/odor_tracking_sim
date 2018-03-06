@@ -3,7 +3,7 @@ import math
 import matplotlib.pyplot as plt
 import cPickle as pickle
 
-f = 'levy_walk'
+f = 'fitting_heading_data_sim'
 input_file = f+'.pkl'
 
 with open(input_file,'r') as f:
@@ -70,14 +70,16 @@ facecolor = 'red', lw = 2, zorder = 1,head_width=0.2,head_length=30)
 ax8 = plt.subplot2grid((3,4),(1,2))
 
 #The below will plot the pdf of the heading distribution
-'''angles = scipy.linspace(heading_mean-scipy.pi,heading_mean+scipy.pi,400)
+angles = scipy.linspace(heading_mean-scipy.pi,heading_mean+scipy.pi,400)
 ax8.plot(angles,heading_dist.pdf(angles))
-ax8.set_xlabel('Variance = '+str(round(heading_dist.var(),3)))
-ax8.set_ylim(0,0.6)'''
+ax8.set_xlabel('Variance = '+str(round(heading_dist.var(),3))+
+'(Kappa = '+str(round(heading_dist.kwds['kappa'],4))+') ')
+ax8.set_ylim(0,0.6)
 
 #The below will plot the time course of the departures from the release point
-release_times = swarm.param['release_time']
+'''release_times = swarm.param['release_time']
 ax8.hist(release_times,bins=100)
 ax8.set_xlabel('Time Constant= '+str(round(swarm.param['release_time_constant'],3)))
-ax8.set_xlim((0,4000))
+ax8.set_xlim((0,4000))'''
+
 plt.show()

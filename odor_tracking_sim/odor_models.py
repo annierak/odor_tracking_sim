@@ -17,7 +17,7 @@ class FakeDiffusionOdorField(object):
     DefaultParam = {
             'wind_field'       : DefaultWindField,
             'diffusion_coeff'  : 0.001,
-            'source_locations' : [(0,0),], 
+            'source_locations' : [(0,0),],
             'source_strengths' : [ 1.0, ],
             'epsilon'          : 0.01,
             'trap_radius'      : 10.0,
@@ -39,7 +39,7 @@ class FakeDiffusionOdorField(object):
 
     def is_in_trap(self,pos):
         flag, trap_num, trap_loc = self.check_if_in_trap(pos)
-        return flag 
+        return flag
 
 
     def value(self,t,x,y):
@@ -59,7 +59,7 @@ class FakeDiffusionOdorField(object):
         if type(x) == scipy.ndarray:
             if x.shape != y.shape:
                 raise RuntimeError, 'shape of x and y must be the same'
-            odor_value = scipy.zeros(x.shape) 
+            odor_value = scipy.zeros(x.shape)
             for src_loc, src_val in zip(source_locations,source_strengths):
                 xx, yy = shift_and_rotate((x,y), src_loc, -wind_angle)
                 tt = xx/wind_speed
@@ -85,9 +85,9 @@ class FakeDiffusionOdorField(object):
 
     def plot(self, plot_param):
         xlim = plot_param['xlim']
-        ylim = plot_param['ylim'] 
+        ylim = plot_param['ylim']
         xnum = plot_param['xnum']
-        ynum = plot_param['ynum']  
+        ynum = plot_param['ynum']
         cmap = plot_param['cmap']
 
 
@@ -124,7 +124,7 @@ class FakeDiffusionOdorField(object):
 
         if threshold is not None:
             plt.figure(fignums[1])
-            odor_thresh = odor_value >= threshold 
+            odor_thresh = odor_value >= threshold
             plt.imshow(odor_thresh, extent=(xlim[0],xlim[1],ylim[0],ylim[1]),cmap=cmap)
             for x,y in self.param['source_locations']:
                 plt.plot([x],[y],'.k')
@@ -134,9 +134,3 @@ class FakeDiffusionOdorField(object):
             plt.xlabel('x (m)')
             plt.ylabel('y (m)')
             plt.title('Odor Concentration >= {0}'.format(threshold))
-
-
-
-
-
-

@@ -12,12 +12,13 @@ import odor_tracking_sim.utility as utility
 
 def run_sim(file_name,wind_angle,release_time_constant,
 kappa=0.,t_stop=15000.0,display_speed=1,
-wind_slippage = 0.,swarm_size=10000,start_type='fh',upper_prob=0.002):
+wind_slippage = (0.,0.),swarm_size=10000,start_type='fh',upper_prob=0.002,heading_data=None):
     output_file = file_name+'.pkl'
     wind_angle=wind_angle*scipy.pi/180.0
     wind_param = {
             'speed': 0.5,
             'angle': wind_angle,
+            'evolving': False
             }
     wind_field = wind_models.ConstantWindField(param=wind_param)
 
@@ -43,6 +44,8 @@ wind_slippage = 0.,swarm_size=10000,start_type='fh',upper_prob=0.002):
     beta = release_time_constant #time constant for release time distribution
     swarm_param = {
         #    'initial_heading'     : scipy.radians(scipy.random.uniform(0.0,360.0,(swarm_size,))),
+            'swarm_size'          : swarm_size,
+            'heading_data'        : heading_data,
             'initial_heading_dist': scipy.stats.vonmises(loc=wind_angle,kappa=kappa),
             'initial_heading'     : scipy.random.vonmises(wind_angle,kappa,(swarm_size,)),
             'x_start_position'    : scipy.zeros((swarm_size,)),
@@ -64,7 +67,7 @@ wind_slippage = 0.,swarm_size=10000,start_type='fh',upper_prob=0.002):
                 'upper': upper_prob,  # detection probability/sec of exposure
                 }
             }
-    swarm = swarm_models.BasicSwarmOfFlies(param=swarm_param,start_type=start_type)
+    swarm = swarm_models.BasicSwarmOfFlies(wind_field,param=swarm_param,start_type=start_type)
     # Setup live plot
     fignum = 1
     plot_scale = 2.0
@@ -97,6 +100,7 @@ wind_slippage = 0.,swarm_size=10000,start_type='fh',upper_prob=0.002):
 
     while t<t_stop:
         print('t: {0:1.2f}'.format(t))
+        #start = time.time()
         swarm.update(t,dt,wind_field,odor_field)
         t+= dt
 
@@ -128,12 +132,17 @@ wind_slippage = 0.,swarm_size=10000,start_type='fh',upper_prob=0.002):
 
             #time.sleep(0.05)
 
-
+        #end = time.time()
     # Write swarm to file
     with open(output_file, 'w') as f:
         pickle.dump(swarm,f)
 
-run_sim('fh',25.,50.,t_stop=15000.,
-display_speed=1,swarm_size = 1000,start_type='fh',wind_slippage=1.,kappa=0.)
+heading_data = {'angles':(scipy.pi/180)*scipy.array([0.,90.,180.,270.]),
+                'counts':scipy.array([[1724,514,1905,4666],[55,72,194,192]])
+                }
+run_sim('fitting_heading_data_sim',45.,50.,t_stop=15000.,
+swarm_size =10000,start_type='fh',wind_slippage=(0.,0.),kappa=0.,upper_prob=0.002,
+display_speed=1.,heading_data=heading_data)
+
 
 raw_input('Done?')

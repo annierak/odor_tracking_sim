@@ -1,4 +1,5 @@
 import scipy
+import scipy.stats
 import math
 
 
@@ -77,6 +78,25 @@ def par_perp(u,v):
 def test_function(x):
     return x
 
+
+def fit_von_mises(heading_data):
+    #Returns tuple (mean, kappa) of the von mises fit to inputted data.
+    #Structure of input: heading data is dict with
+    #key1: 'angles' : 1xn array of angles
+    #key2: 'counts' : mxn array of angle counts
+    angles = heading_data['angles']
+    counts = heading_data['counts']
+    #Create a weighted histogram where each row gets weight inversely proportional to
+    counts[1,:] = 5*counts[1,:]
+    counts = scipy.sum(counts,0)
+    #Fit the histogram to a von mises
+    draws = tuple(scipy.repeat(angles[i],counts[i]) for i in range(len(angles)))
+    headings = scipy.concatenate(draws)
+    #import matplotlib.pyplot as plt
+    #plt.subplot(111,polar=True);plt.hist(headings);plt.show()
+    (kappa_est,mu_est,scale) = scipy.stats.vonmises.fit(headings,fscale=1)
+    #raw_input('Done?')
+    return mu_est, kappa_est
 
 
 # Testing/development

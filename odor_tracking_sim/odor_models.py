@@ -11,8 +11,8 @@ from .utility import distance
 
 class FakeDiffusionOdorField(object):
 
-    DefaultWindParam = {'angle': 0.0, 'speed': 0.2}
-    DefaultWindField = wind_models.ConstantWindField(param =DefaultWindParam)
+    DefaultWindParam = {'evolving':False, 'angle': 0.0, 'speed': 1.0, 'wind_dt':None, 'dt':0.25}
+    DefaultWindField = wind_models.WindField(param =DefaultWindParam)
 
     DefaultParam = {
             'wind_field'       : DefaultWindField,
@@ -26,8 +26,8 @@ class FakeDiffusionOdorField(object):
     def __init__(self,param={}):
         self.param = dict(self.DefaultParam)
         self.param.update(param)
-        if  type(self.param['wind_field']) != wind_models.ConstantWindField:
-            raise(ValueError, 'wind_field must of type wind_models.ConstantWindField')
+        if  type(self.param['wind_field']) != wind_models.WindField:
+            raise(ValueError, 'wind_field must of type wind_models.WindField')
 
     def check_if_in_trap(self,pos):
         for trap_num, trap_loc in enumerate(self.param['source_locations']):
@@ -45,11 +45,14 @@ class FakeDiffusionOdorField(object):
     def value(self,t,x,y):
         """
         Returns odor concentration as a function of time and position.
-        Note: in this implementation time is current ignored.
         """
         # Extract parameters
-        wind_angle = self.param['wind_field'].angle
-        wind_speed = self.param['wind_field'].speed
+        wind_field = self.param['wind_field']
+        if wind_field.evolving:
+            wind_speed,wind_angle = wind_field.value_polar(t,x,y)
+        else:
+            wind_angle = self.param['wind_field'].angle
+            wind_speed = self.param['wind_field'].speed
         source_locations = self.param['source_locations']
         source_strengths = self.param['source_strengths']
         dcoeff = self.param['diffusion_coeff']
@@ -60,6 +63,7 @@ class FakeDiffusionOdorField(object):
             if x.shape != y.shape:
                 raise RuntimeError, 'shape of x and y must be the same'
             odor_value = scipy.zeros(x.shape)
+
             for src_loc, src_val in zip(source_locations,source_strengths):
                 xx, yy = shift_and_rotate((x,y), src_loc, -wind_angle)
                 tt = xx/wind_speed
@@ -83,7 +87,7 @@ class FakeDiffusionOdorField(object):
         return odor_value
 
 
-    def plot(self, plot_param):
+    def plot(self, t,plot_param):
         xlim = plot_param['xlim']
         ylim = plot_param['ylim']
         xnum = plot_param['xnum']
@@ -104,7 +108,7 @@ class FakeDiffusionOdorField(object):
         x_values = scipy.linspace(xlim[0], xlim[1], xnum)
         y_values = scipy.linspace(ylim[0], ylim[1], ynum)
         x_mesh, y_mesh = scipy.meshgrid(x_values,y_values,indexing='xy')
-        odor_value = self.value(0.0,x_mesh.flatten(), y_mesh.flatten())
+        odor_value = self.value(t,x_mesh.flatten(), y_mesh.flatten())
         odor_value = scipy.reshape(odor_value,x_mesh.shape)
         odor_value = scipy.flipud(odor_value)
 

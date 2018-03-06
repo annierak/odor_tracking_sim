@@ -12,15 +12,27 @@ import odor_tracking_sim.utility as utility
 
 def run_sim(file_name,wind_angle,release_time_constant,
 kappa=0.,t_stop=15000.0,display_speed=1,
-wind_slippage = (0.,0.),swarm_size=10000,start_type='fh',upper_prob=0.002,heading_data=None):
+wind_slippage = (0.,0.),swarm_size=10000,start_type='fh',upper_prob=0.002,heading_data=None,wind_data_file=None,dt=0.25):
     output_file = file_name+'.pkl'
-    wind_angle=wind_angle*scipy.pi/180.0
-    wind_param = {
+    if not(wind_data_file==None):
+        wind_angle,wind_speed,wind_dt = utility.process_wind_data(wind_data_file)
+        wind_param = {
+        'speed':wind_speed,
+        'angle':wind_angle,
+        'evolving': True,
+        'wind_dt': wind_dt,
+        'dt': dt
+        }
+    else:
+        wind_angle=wind_angle*scipy.pi/180.0
+        wind_param = {
             'speed': 0.5,
             'angle': wind_angle,
-            'evolving': False
+            'evolving': False,
+            'wind_dt': None,
+            'dt': dt
             }
-    wind_field = wind_models.ConstantWindField(param=wind_param)
+    wind_field = wind_models.WindField(param=wind_param)
 
     # Create circular odor field, set source locations and strengths
     number_sources = 6
@@ -42,12 +54,16 @@ wind_slippage = (0.,0.),swarm_size=10000,start_type='fh',upper_prob=0.002,headin
     odor_field = odor_models.FakeDiffusionOdorField(odor_param)
     swarm_size = swarm_size
     beta = release_time_constant #time constant for release time distribution
+    if wind_field.evolving:
+        wind_angle_0 = wind_angle[0]
+    else:
+        wind_angle_0 = wind_angle
     swarm_param = {
         #    'initial_heading'     : scipy.radians(scipy.random.uniform(0.0,360.0,(swarm_size,))),
             'swarm_size'          : swarm_size,
             'heading_data'        : heading_data,
-            'initial_heading_dist': scipy.stats.vonmises(loc=wind_angle,kappa=kappa),
-            'initial_heading'     : scipy.random.vonmises(wind_angle,kappa,(swarm_size,)),
+            'initial_heading_dist': scipy.stats.vonmises(loc=wind_angle_0,kappa=kappa),
+            'initial_heading'     : scipy.random.vonmises(wind_angle_0,kappa,(swarm_size,)),
             'x_start_position'    : scipy.zeros((swarm_size,)),
             'y_start_position'    : scipy.zeros((swarm_size,)),
             'heading_error_std'   : scipy.radians(10.0),
@@ -81,7 +97,7 @@ wind_slippage = (0.,0.),swarm_size=10000,start_type='fh',upper_prob=0.002,headin
             'fignums' : (1,2),
             #'threshold': 0.001,
             }
-    odor_field.plot(plot_param=plot_param)
+    odor_field.plot(0.,plot_param=plot_param)
     #plt.show()
 
     plt.ion()
@@ -94,7 +110,7 @@ wind_slippage = (0.,0.),swarm_size=10000,start_type='fh',upper_prob=0.002,headin
     fig.canvas.flush_events()
     plt.pause(0.001)
     t = 0.0
-    dt = 0.25
+    dt = dt
     dt_plot = 10.0*display_speed
     t_plot_last = 0.0
 
@@ -126,6 +142,8 @@ wind_slippage = (0.,0.),swarm_size=10000,start_type='fh',upper_prob=0.002,headin
             frac_list = ['{0:1.2f}'.format(x) for x in frac_list]
             #plt.title('{0}/{1}: {2} {3}'.format(total_cnt,swarm.size,trap_list,frac_list))
 
+            odor_field.plot(t,plot_param=plot_param)
+
             fig.canvas.flush_events()
             t_plot_last = t
             #plt.pause(5)
@@ -140,9 +158,10 @@ wind_slippage = (0.,0.),swarm_size=10000,start_type='fh',upper_prob=0.002,headin
 heading_data = {'angles':(scipy.pi/180)*scipy.array([0.,90.,180.,270.]),
                 'counts':scipy.array([[1724,514,1905,4666],[55,72,194,192]])
                 }
-run_sim('fitting_heading_data_sim',45.,50.,t_stop=15000.,
-swarm_size =10000,start_type='fh',wind_slippage=(0.,0.),kappa=0.,upper_prob=0.002,
-display_speed=1.,heading_data=heading_data)
+wind_data_file = '10_26_wind_vectors.csv'
+run_sim('evolving_wind_and_odor',45.,50.,t_stop=10000.,
+swarm_size =100,start_type='fh',wind_slippage=(1.,1.),kappa=0.,upper_prob=0.002,
+display_speed=1.,heading_data=heading_data,wind_data_file=wind_data_file)
 
 
 raw_input('Done?')

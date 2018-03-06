@@ -1,6 +1,7 @@
 import scipy
 import scipy.stats
 import math
+import pandas as pd
 
 
 def rotate_vecs(x,y,angle):
@@ -98,6 +99,28 @@ def fit_von_mises(heading_data):
     #raw_input('Done?')
     return mu_est, kappa_est
 
+wind_data_file = '10_26_wind_vectors.csv'
+
+def process_wind_data(wind_data_file):
+    #Takes in a csv file and outputs wind_angle,wind_speed,wind_dt
+    wind_df = pd.read_csv('/home/annie/work/programming/odor_tracking_sim/data_files/'+wind_data_file)
+    cols = list(wind_df.columns.values)
+    secs,degs,mph = tuple(wind_df[col].as_matrix() for col in cols)
+    #Convert min to seconds
+    times = 60.*secs
+    wind_dt = times[1]-times[0]
+    #Convert degrees to radians and switch to going vs coming
+    wind_angle = (scipy.radians(degs)+scipy.pi)%(2*scipy.pi)
+    #Convert mph to meters/sec
+    wind_speed = mph*(1/3600.)*1609.34
+    return wind_angle,wind_speed,wind_dt
+
+wind_angle,wind_speed,wind_dt = process_wind_data(wind_data_file)
+#print wind_angle, wind_speed,wind_dt
+#import matplotlib.pyplot as plt
+#plt.subplot(111,polar=True)
+#plt.hist(wind_angle);plt.show()
+#raw_input('Done?')
 
 # Testing/development
 # --------------------------------------------------------------------

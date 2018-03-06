@@ -20,6 +20,7 @@ class BasicSwarmOfFlies(object):
 
     DefaultSize = 500
     DefaultParam = {
+            'dt'                  : 0.25,
             'initial_heading_dist': scipy.stats.uniform(0,2*scipy.pi), #continuous_distribution object
             'initial_heading'     : scipy.radians(scipy.random.uniform(0.0,360.0,(DefaultSize,))),
             'x_start_position'    : scipy.zeros((DefaultSize,)),
@@ -50,6 +51,7 @@ class BasicSwarmOfFlies(object):
         self.param = dict(self.DefaultParam)
         self.param.update(param)
         self.check_param()
+        self.dt = self.param['dt']
         self.x_position = self.param['x_start_position']
         self.y_position = self.param['y_start_position']
 

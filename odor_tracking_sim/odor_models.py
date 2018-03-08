@@ -17,29 +17,31 @@ class FakeDiffusionOdorField(object):
     DefaultParam = {
             'wind_field'       : DefaultWindField,
             'diffusion_coeff'  : 0.001,
-            'source_locations' : [(0,0),],
-            'source_strengths' : [ 1.0, ],
-            'epsilon'          : 0.01,
-            'trap_radius'      : 10.0,
-            }
+            'epsilon'          : 0.01}#,
+#            'source_locations' : [(0,0),],
+#            'source_strengths' : [ 1.0, ],
+#            'epsilon'          : 0.01,
+#            'trap_radius'      : 10.0,
+#            }
 
-    def __init__(self,param={}):
+    def __init__(self,traps,param={}):
         self.param = dict(self.DefaultParam)
         self.param.update(param)
         if  type(self.param['wind_field']) != wind_models.WindField:
             raise(ValueError, 'wind_field must of type wind_models.WindField')
+        self.traps = traps
 
-    def check_if_in_trap(self,pos):
-        for trap_num, trap_loc in enumerate(self.param['source_locations']):
-            dist = distance(pos, trap_loc)
-            if dist <= self.param['trap_radius']:
-                return True, trap_num, trap_loc
-        return False, None, None
+#    def check_if_in_trap(self,pos):
+#        for trap_num, trap_loc in enumerate(self.param['source_locations']):
+#            dist = distance(pos, trap_loc)
+#            if dist <= self.param['trap_radius']:
+#                return True, trap_num, trap_loc
+#        return False, None, None
 
 
-    def is_in_trap(self,pos):
-        flag, trap_num, trap_loc = self.check_if_in_trap(pos)
-        return flag
+#    def is_in_trap(self,pos):
+#        flag, trap_num, trap_loc = self.check_if_in_trap(pos)
+#        return flag
 
 
     def value(self,t,x,y):
@@ -53,8 +55,9 @@ class FakeDiffusionOdorField(object):
         else:
             wind_angle = self.param['wind_field'].angle
             wind_speed = self.param['wind_field'].speed
-        source_locations = self.param['source_locations']
-        source_strengths = self.param['source_strengths']
+        traps = self.traps
+        source_locations = traps.param['source_locations']
+        source_strengths = traps.param['source_strengths']
         dcoeff = self.param['diffusion_coeff']
         epsilon = self.param['epsilon']
 
@@ -114,23 +117,22 @@ class FakeDiffusionOdorField(object):
 
         plt.figure(fignums[0])
         plt.imshow(odor_value, extent=(xlim[0],xlim[1],ylim[0],ylim[1]),cmap=cmap)
-        for x,y in self.param['source_locations']:
+        for x,y in self.traps.param['source_locations']:
             #plt.plot([x],[y],'ok')
             s = scipy.linspace(0,2.0*scipy.pi,100)
-            cx = x + self.param['trap_radius']*scipy.cos(s)
-            cy = y + self.param['trap_radius']*scipy.sin(s)
+            cx = x + self.traps.param['trap_radius']*scipy.cos(s)
+            cy = y + self.traps.param['trap_radius']*scipy.sin(s)
             plt.plot(cx,cy,'k')
         plt.plot([0],[0],'ob')
         plt.grid('on')
         plt.xlabel('x (m)')
         plt.ylabel('y (m)')
         plt.title('Odor Concentration')
-
         if threshold is not None:
             plt.figure(fignums[1])
             odor_thresh = odor_value >= threshold
             plt.imshow(odor_thresh, extent=(xlim[0],xlim[1],ylim[0],ylim[1]),cmap=cmap)
-            for x,y in self.param['source_locations']:
+            for x,y in self.traps.param['source_locations']:
                 plt.plot([x],[y],'.k')
 
             plt.plot([0],[0],'ob')

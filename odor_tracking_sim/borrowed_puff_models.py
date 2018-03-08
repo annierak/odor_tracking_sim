@@ -305,7 +305,7 @@ class ConcentrationArrayGenerator(object):
     """
 
     def __init__(self, array_xy_region, array_z, nx, ny, puff_mol_amount,
-                 kernel_rad_mult=3,trap_radius=None,sources=None):
+                 kernel_rad_mult=3):
         """
         Parameters
         ----------
@@ -342,8 +342,8 @@ class ConcentrationArrayGenerator(object):
         self._ampl_const = puff_mol_amount / (8*scipy.pi**3)**0.5
         self.kernel_rad_mult = kernel_rad_mult
         self.param = {}
-        self.param.update({'trap_radius':trap_radius})
-        self.param.update({'source_locations':sources})
+        #self.param.update({'trap_radius':trap_radius}) #moved to trap object
+        #self.param.update({'source_locations':sources})
     def _puff_conc_dist(self, x, y, z, px, py, pz, r_sq):
         #print(len(x),len(y),len(px),len(py))
         # calculate Gaussian puff concentration distribution

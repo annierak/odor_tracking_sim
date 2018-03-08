@@ -110,7 +110,7 @@ class BasicSwarmOfFlies(object):
         return self.param['initial_heading'].shape[0]
 
 
-    def update(self, t, dt, wind_field, odor_field,plumes=None):
+    def update(self, t, dt, wind_field, odor_field,traps,plumes=None):
         """
         Update fly swarm one time step.
         """
@@ -143,7 +143,7 @@ class BasicSwarmOfFlies(object):
         self.update_for_odor_loss(t, dt, odor, wind_uvecs, masks)
 
         # Udate state for flies in traps
-        self.update_for_in_trap(t, odor_field)
+        self.update_for_in_trap(t, traps)
         # Update position based on mode and current velocities
         mask_trapped = self.mode == self.Mode_Trapped
 
@@ -256,15 +256,15 @@ class BasicSwarmOfFlies(object):
         self.y_velocity[mask_change] = self.cast_sign[mask_change]*speed*y_unit_change
 
 
-    def update_for_in_trap(self, t, odor_field): #******
+    def update_for_in_trap(self, t, traps): #******
         """
          Update simulation for flies in traps.
          * If flies are in traps. If so record trap info and time.
         """
-        sources = odor_field.param['source_locations'] #Of format [(0,0),]
+        sources = traps.param['source_locations'] #Of format [(0,0),]
         for trap_num, trap_loc in enumerate(sources):
             dist_vals = distance((self.x_position, self.y_position),trap_loc)
-            mask_trapped = dist_vals < odor_field.param['trap_radius']
+            mask_trapped = dist_vals < traps.param['trap_radius']
             self.mode[mask_trapped] = self.Mode_Trapped
             self.trap_num[mask_trapped] = trap_num
             self.x_trap_loc[mask_trapped] = trap_loc[0]

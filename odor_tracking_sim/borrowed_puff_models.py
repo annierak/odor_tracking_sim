@@ -342,6 +342,7 @@ class ConcentrationArrayGenerator(object):
         self._ampl_const = puff_mol_amount / (8*scipy.pi**3)**0.5
         self.kernel_rad_mult = kernel_rad_mult
         self.param = {}
+        self.puff_mol_amount = puff_mol_amount
         #self.param.update({'trap_radius':trap_radius}) #moved to trap object
         #self.param.update({'source_locations':sources})
     def _puff_conc_dist(self, x, y, z, px, py, pz, r_sq):
@@ -528,12 +529,12 @@ class ConcentrationArrayGenerator(object):
 #        print('-----------                          vmax'+ str(vmax))
         plt.figure(fignums[0])
 
-    #    vmin = 0.00001
-    #    vmax= 0.01
+        vmin = 0.0
+        vmax= 20.*(self.puff_mol_amount/1000.) #empirically observed scaling lol
     #    t = matplotlib.colors.LogNorm(vmin=vmin,vmax=vmax)
 
         #conc_array=conc_array/conc_array.max()
-        image=plt.imshow(scipy.log(conc_array), extent=(xlim[0],xlim[1],ylim[0],ylim[1]),cmap=cmap)
+        image=plt.imshow(conc_array, extent=(xlim[0],xlim[1],ylim[0],ylim[1]),cmap=cmap,vmin=vmin,vmax=vmax)
 #            #plt.plot([x],[y],'ok')
 #            s = scipy.linspace(0,2.0*scipy.pi,100)
 #            cx = x + self.param['trap_radius']*scipy.cos(s)

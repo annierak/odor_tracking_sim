@@ -5,6 +5,7 @@ import scipy
 import matplotlib.pyplot as plt
 import matplotlib
 import cPickle as pickle
+import sys
 
 import odor_tracking_sim.wind_models as wind_models
 import odor_tracking_sim.odor_models as odor_models
@@ -58,7 +59,7 @@ trap_radius = 5.):
     traps = trap_models.TrapModel(trap_param)
     return traps
 
-def setup_odor_field(wind_field,traps,plot_scale,puffs=False):
+def setup_odor_field(wind_field,traps,plot_scale,puff_mol_amount,puffs=False):
     plot_size = plot_scale*traps.param['source_radius']
     if not(puffs):
         '''This is Will's odor implementation'''
@@ -85,6 +86,7 @@ def setup_odor_field(wind_field,traps,plot_scale,puffs=False):
         '''Get the odor puff stuff ready'''
         sim_region = puff_models.Rectangle(-plot_size, -plot_size, plot_size, plot_size)
         source_pos = traps.param['source_locations'][4]
+        #source_pos = traps.param['source_locations']
         '''*****************'''
         plumes = puff_models.PlumeModel(sim_region, source_pos, wind_field,
                                         puff_release_rate=0.1,model_z_disp=False,
@@ -92,7 +94,7 @@ def setup_odor_field(wind_field,traps,plot_scale,puffs=False):
     #Concentration generator object
         grid_size = 1000
         odor_field = puff_models.ConcentrationArrayGenerator(sim_region, 0.1, grid_size,
-                                                           grid_size, 1000.,kernel_rad_mult=5)
+                                                           grid_size, puff_mol_amount,kernel_rad_mult=5)
     #Pompy version---------------------------
         odor_plot_param = {
             'xlim' : (-plot_size, plot_size),
@@ -166,6 +168,11 @@ def run_sim(file_name,wind_angle,release_time_constant,
 kappa=0.,t_stop=15000.0,display_speed=1,
 wind_slippage = (0.,0.),swarm_size=10000,start_type='fh',upper_prob=0.002,
 heading_data=None,wind_data_file=None,dt=0.25,wind=True,flies=True,puffs=False,plot_scale = 2.0,release_delay=0.):
+    if puffs:
+        lower_prob = 0.05
+        upper_prob = 0.05
+        puff_mol_amount = 100.
+
     output_file = file_name+'.pkl'
     #Create wind field
     wind_field=setup_wind_field(wind_angle,wind_data_file,dt)
@@ -173,7 +180,7 @@ heading_data=None,wind_data_file=None,dt=0.25,wind=True,flies=True,puffs=False,p
     traps = setup_traps()
 
 
-    odor_plot_param,odor_field,plumes = setup_odor_field(wind_field,traps,plot_scale,puffs=puffs)
+    odor_plot_param,odor_field,plumes = setup_odor_field(wind_field,traps,plot_scale,puff_mol_amount,puffs=puffs)
 
     '''Get swarm ready'''
     if flies:
@@ -240,15 +247,14 @@ heading_data=None,wind_data_file=None,dt=0.25,wind=True,flies=True,puffs=False,p
             if not(puffs): #Will's version odor field
                 odor_mesh=odor_field.value_to_mesh(t,odor_plot_param)
                 image.set_data(odor_mesh)
-                plt.figure(10);plt.clf()
-                plt.hist(scipy.unique(odor_mesh),bins=100)
+                #plt.figure(10);plt.clf();plt.hist(scipy.unique(odor_mesh),bins=100)
             else: #Pompy version
                 conc_array = (
                 odor_field.generate_single_array(plumes.puff_array).T[::-1])
                 #conc_array=conc_array/conc_array.max()
-                image.set_data(scipy.log(conc_array))
-                plt.figure(10);plt.clf()
-                plt.hist(scipy.unique(conc_array),bins=100)
+                image.set_data(conc_array)
+                #image.set_data(scipy.log(conc_array))
+                #plt.figure(10);plt.clf();plt.hist(scipy.unique(conc_array),bins=100);plt.xlim(0,20)
 
 #            plt.pause(0.5)
 

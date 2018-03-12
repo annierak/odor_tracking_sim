@@ -4,6 +4,8 @@ class TrapModel(object):
             'source_locations' : [(0,0),],
             'source_strengths' : [ 1.0, ],
             'trap_radius'      : 10.0,
+            'epsilon'          : 0.01,
+            'source_radius'    : 1000
             }
 
     def __init__(self,param={}):

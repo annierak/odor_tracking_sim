@@ -5,7 +5,7 @@ import scipy.special
 import matplotlib.pyplot as plt
 import wind_models
 
-from .utility import shift_and_rotate
+from utility import shift_and_rotate
 from .utility import rotation_matrix
 from .utility import distance
 

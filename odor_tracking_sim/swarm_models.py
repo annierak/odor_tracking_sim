@@ -121,7 +121,8 @@ class BasicSwarmOfFlies(object):
         mask_startmode = mask_release & (self.mode == self.Mode_StartMode)
         mask_flyupwd = mask_release & (self.mode == self.Mode_FlyUpWind)
         mask_castfor = mask_release & (self.mode == self.Mode_CastForOdor)
-
+        print(str(sum(mask_castfor))+' flies are casting')
+        print(str(sum(mask_flyupwd))+' flies are surging')
         #Keep track of which flies have never tracked
         self.ever_tracked = self.ever_tracked | (mask_release & (self.mode == self.Mode_FlyUpWind)) #this is true if the fly has previously tracked or has been released and is now in upwind mode
 

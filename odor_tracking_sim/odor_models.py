@@ -89,12 +89,22 @@ class FakeDiffusionOdorField(object):
                     odor_value +=  term_0*term_1*term_2
         return odor_value
 
+    def value_to_mesh(self,t,plot_param):
+        xnum = plot_param['xnum']
+        ynum = plot_param['ynum']
+        xlim = plot_param['xlim']
+        ylim = plot_param['ylim']
+        x_values = scipy.linspace(xlim[0], xlim[1], xnum)
+        y_values = scipy.linspace(ylim[0], ylim[1], ynum)
+        x_mesh, y_mesh = scipy.meshgrid(x_values,y_values,indexing='xy')
+        odor_value = self.value(t,x_mesh.flatten(), y_mesh.flatten())
+        odor_value = scipy.reshape(odor_value,x_mesh.shape)
+        odor_mesh = scipy.flipud(odor_value)
+        return odor_mesh
 
     def plot(self, t,plot_param):
         xlim = plot_param['xlim']
         ylim = plot_param['ylim']
-        xnum = plot_param['xnum']
-        ynum = plot_param['ynum']
         cmap = plot_param['cmap']
 
 
@@ -108,15 +118,10 @@ class FakeDiffusionOdorField(object):
         except KeyError:
             fignums = (1,2)
 
-        x_values = scipy.linspace(xlim[0], xlim[1], xnum)
-        y_values = scipy.linspace(ylim[0], ylim[1], ynum)
-        x_mesh, y_mesh = scipy.meshgrid(x_values,y_values,indexing='xy')
-        odor_value = self.value(t,x_mesh.flatten(), y_mesh.flatten())
-        odor_value = scipy.reshape(odor_value,x_mesh.shape)
-        odor_value = scipy.flipud(odor_value)
+        odor_mesh = self.value_to_mesh(t,plot_param)
 
         plt.figure(fignums[0])
-        plt.imshow(odor_value, extent=(xlim[0],xlim[1],ylim[0],ylim[1]),cmap=cmap)
+        image = plt.imshow(odor_mesh, extent=(xlim[0],xlim[1],ylim[0],ylim[1]),cmap=cmap)
         for x,y in self.traps.param['source_locations']:
             #plt.plot([x],[y],'ok')
             s = scipy.linspace(0,2.0*scipy.pi,100)
@@ -127,7 +132,6 @@ class FakeDiffusionOdorField(object):
         plt.grid('on')
         plt.xlabel('x (m)')
         plt.ylabel('y (m)')
-        plt.title('Odor Concentration')
         if threshold is not None:
             plt.figure(fignums[1])
             odor_thresh = odor_value >= threshold
@@ -140,3 +144,4 @@ class FakeDiffusionOdorField(object):
             plt.xlabel('x (m)')
             plt.ylabel('y (m)')
             plt.title('Odor Concentration >= {0}'.format(threshold))
+        return image

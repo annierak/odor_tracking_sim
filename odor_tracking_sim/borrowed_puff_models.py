@@ -199,7 +199,7 @@ class PlumeModel(object):
         # initialise puff list with specified number of new puffs
         self.puffs = [Puff(*self._new_puff_params)
                       for i in range(init_num_puffs)]
-    def any_yet(self):
+    def report(self):
         print('We have '+str(len(self.puffs))+' puffs going on.')
 
     def update(self, t, dt):
@@ -531,8 +531,9 @@ class ConcentrationArrayGenerator(object):
     #    vmin = 0.00001
     #    vmax= 0.01
     #    t = matplotlib.colors.LogNorm(vmin=vmin,vmax=vmax)
-        conc_array=conc_array/conc_array.max()
-        image=plt.imshow(conc_array, extent=(xlim[0],xlim[1],ylim[0],ylim[1]),cmap=cmap)
+
+        #conc_array=conc_array/conc_array.max()
+        image=plt.imshow(scipy.log(conc_array), extent=(xlim[0],xlim[1],ylim[0],ylim[1]),cmap=cmap)
 #            #plt.plot([x],[y],'ok')
 #            s = scipy.linspace(0,2.0*scipy.pi,100)
 #            cx = x + self.param['trap_radius']*scipy.cos(s)

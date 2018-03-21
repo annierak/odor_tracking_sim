@@ -114,6 +114,7 @@ class BasicSwarmOfFlies(object):
         """
         Update fly swarm one time step.
         """
+        last = time.time()
         if plumes is not None:
             puff_array = plumes.puff_array
         # Get masks for selecting fly based on mode
@@ -125,7 +126,8 @@ class BasicSwarmOfFlies(object):
         print(str(sum(mask_flyupwd))+' flies are surging')
         #Keep track of which flies have never tracked
         self.ever_tracked = self.ever_tracked | (mask_release & (self.mode == self.Mode_FlyUpWind)) #this is true if the fly has previously tracked or has been released and is now in upwind mode
-
+        print('time categorizing flies: '+str(time.time()-last))
+        last = time.time()
         # Get odor value and wind vectors at current position and time for each fly
         if isinstance(odor_field,FakeDiffusionOdorField):
             odor = odor_field.value(t,self.x_position,self.y_position)
@@ -134,15 +136,20 @@ class BasicSwarmOfFlies(object):
         x_wind, y_wind = wind_field.value(t,self.x_position, self.y_position)
         x_wind_unit, y_wind_unit = unit_vector(x_wind, y_wind)
         wind_uvecs = {'x': x_wind_unit,'y': y_wind_unit}
-
-        # Update state for flies detectoring odor plumes
-        masks = {'startmode': mask_startmode, 'castfor': mask_castfor}
-        self.update_for_odor_detection(dt, odor, wind_uvecs, masks)
-
-        # Update state for files losing odor plume or already casting.
-        masks = {'flyupwd': mask_flyupwd, 'castfor': mask_castfor}
-        self.update_for_odor_loss(t, dt, odor, wind_uvecs, masks)
-
+        print('time obtaining odor and wind info: '+str(time.time()-last))
+        last = time.time()
+        if not(self.start_type=='cvrw' or self.start_type=='rw'):
+            #The random walk mode excludes odor detection
+            # Update state for flies detectoring odor plumes
+            masks = {'startmode': mask_startmode, 'castfor': mask_castfor}
+            self.update_for_odor_detection(dt, odor, wind_uvecs, masks)
+            print('time updating for odor detection: '+str(time.time()-last))
+            last = time.time()
+            # Update state for files losing odor plume or already casting.
+            masks = {'flyupwd': mask_flyupwd, 'castfor': mask_castfor}
+            self.update_for_odor_loss(t, dt, odor, wind_uvecs, masks)
+            print('time updating for odor loss: '+str(time.time()-last))
+            last = time.time()
         # Udate state for flies in traps
         self.update_for_in_trap(t, traps)
         # Update position based on mode and current velocities

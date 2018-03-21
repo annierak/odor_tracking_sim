@@ -106,7 +106,7 @@ class PlumeModel(object):
     def __init__(self, sim_region, source_pos, wind_model, model_z_disp=True,
                  centre_rel_diff_scale=2., puff_init_rad=0.03,
                  puff_spread_rate=0.001, puff_release_rate=10,
-                 init_num_puffs=50, max_num_puffs=1000, prng=scipy.random):
+                 init_num_puffs=50, max_num_puffs=25000, prng=scipy.random):
         """
         Parameters
         ----------
@@ -119,6 +119,8 @@ class PlumeModel(object):
             simulation region from which puffs are released. If a length 2
             sequence is passed, the z coordinate will be set a default of 0.
             (dimensionality: length)
+        ***AKR 3/12 I adjusted this to be a list of positions --> multiple sources.
+            Specifically, source pos is an 3xm array, coordinates by sources
         wind_model : WindModel
             Dynamic model of the large scale wind velocity field in the
             simulation region.
@@ -174,6 +176,7 @@ class PlumeModel(object):
         self.sim_region = sim_region
         self.wind_model = wind_model
         self.source_pos = source_pos
+        self.unique_sources = len(source_pos[0,:])
         self.prng = prng
         self.model_z_disp = model_z_disp
         self._vel_dim = 3 if model_z_disp else 2
@@ -183,37 +186,46 @@ class PlumeModel(object):
                                                   len(centre_rel_diff_scale) \
                                                   must be 1 or 3')
         self.centre_rel_diff_scale = centre_rel_diff_scale
-        if not sim_region.contains(source_pos[0], source_pos[1]):
-            raise InvalidSourcePositionError('Specified source (x,y) \
+        for i in range(self.unique_sources):
+            if not sim_region.contains(source_pos[0,i], source_pos[1,i]):
+                raise InvalidSourcePositionError('Specified source (x,y) \
                                               position must be within \
                                               simulation region.')
         # default to zero height source
-        source_z = 0
-        if len(source_pos) == 3:
-            source_z = source_pos[2]
-        self._new_puff_params = (source_pos[0], source_pos[1], source_z,
+        self.source_z = 0.0
+        if len(source_pos[:,0]) == 3:
+            source_pos[2,:] = source_z
+        self.puff_init_rad = puff_init_rad
+        self._new_puff_params = (source_pos[0,:], source_pos[1,:], self.source_z,
                                  puff_init_rad**2)
         self.puff_spread_rate = puff_spread_rate
         self.puff_release_rate = puff_release_rate
         self.max_num_puffs = max_num_puffs
         # initialise puff list with specified number of new puffs
-        self.puffs = [Puff(*self._new_puff_params)
-                      for i in range(init_num_puffs)]
+        #print((source_pos[0,j],source_pos[1,j],source_z,puff_init_rad**2)
+        #    for j in range(self.unique_sources))
+        self.puffs = list(scipy.ndarray.flatten(scipy.array(
+        [[Puff(source_pos[0,j],source_pos[1,j],self.source_z,puff_init_rad**2) for j in range(self.unique_sources)]
+                      for i in range(init_num_puffs)])))
     def report(self):
         print('We have '+str(len(self.puffs))+' puffs going on.')
 
     def update(self, t, dt):
         """Perform time-step update of plume model with Euler integration."""
         # add more puffs (stochastically) if enough capacity
-        if len(self.puffs) < self.max_num_puffs:
+        if len(self.puffs) < self.max_num_puffs*self.unique_sources:
             # puff release modelled as Poisson process at fixed mean rate
             # with number to release clipped if it would otherwise exceed
             # the maximum allowed
-            num_to_release = self.prng.poisson(self.puff_release_rate*dt)
-            num_to_release = min(num_to_release,
+
+            #****Draw separately for each trap
+            for j in range(self.unique_sources):
+                num_to_release = self.prng.poisson(self.puff_release_rate*dt)
+                num_to_release = min(num_to_release,
                                  self.max_num_puffs - len(self.puffs))
-            for i in range(num_to_release):
-                self.puffs.append(Puff(*self._new_puff_params))
+                for i in range(num_to_release):
+                    self.puffs.append(Puff(self.source_pos[0,j],
+                    self.source_pos[1,j],self.source_z,self.puff_init_rad**2))
         # initialise empty list for puffs that have not left simulation area
         alive_puffs = []
         for puff in self.puffs:
@@ -534,7 +546,7 @@ class ConcentrationArrayGenerator(object):
     #    t = matplotlib.colors.LogNorm(vmin=vmin,vmax=vmax)
 
         #conc_array=conc_array/conc_array.max()
-        image=plt.imshow(conc_array, extent=(xlim[0],xlim[1],ylim[0],ylim[1]),cmap=cmap,vmin=vmin,vmax=vmax)
+        image=plt.imshow(scipy.log(conc_array), extent=(xlim[0],xlim[1],ylim[0],ylim[1]),cmap=cmap,vmin=vmin,vmax=vmax)
 #            #plt.plot([x],[y],'ok')
 #            s = scipy.linspace(0,2.0*scipy.pi,100)
 #            cx = x + self.param['trap_radius']*scipy.cos(s)

@@ -3,6 +3,7 @@ import math
 import matplotlib.pyplot as plt
 import cPickle as pickle
 import sys
+import odor_tracking_sim.utility as utility
 
 f = sys.argv[1]
 last_spot = sys.argv[2]
@@ -46,12 +47,13 @@ for i in trap_num_list:
     peak_counts[i]=max(n)
     t1 = swarm.get_time_trapped(i,straight_shots=True)
     ax.hist(t1,bins,color='red')
+    utility.customaxis(ax)
+    ax.set_xlabel('(s)',horizontalalignment='left',x=1.0)
+    ax.set_ylabel('trap:{0}'.format(i))
 
     #This is the raster plot option:
     # r = ax.eventplot(t,colors=['green'])[0]
     # rasters.append(r)
-    # ax.set_xlabel('(s)',horizontalalignment='left',x=1.0)
-    # ax.set_ylabel('trap:{0}'.format(i))
     #Add on a plot for the flies that went straight into the trap
 print(len(rasters))
 top = max(peak_counts)
@@ -100,8 +102,10 @@ elif last_spot == 'dep':
     #The below will plot the time course of the departures from the release point
     release_times = swarm.param['release_time'] - swarm.param['release_delay']
     ax8.hist(release_times,bins=100)
-    ax8.set_xlabel('Time Constant= '+str(round(swarm.param['release_time_constant'],3)))
-    ax8.set_xlim((0,4000))
+    ax8.set_xlabel('Release Time Course (Time Constant= '+str(round(swarm.param['release_time_constant'],3))+')      (s)')
+    ax8.set_xlim((0,1000))
+    #ax8.set_xlabel('(s)',horizontalalignment='left',x=1.0)
+utility.customaxis(ax8)
 
 #Plot the wind direction
 if wind_field.evolving:
@@ -118,6 +122,6 @@ ax9.set_ylim((0,1))
 #                  lw = 2, zorder = 5)
 ax9.annotate("", xy=(wind_angle_0,0.75), xytext=(0, 0), arrowprops=dict(arrowstyle="->,head_width=0.5,head_length=1.",edgecolor = 'teal',
  facecolor = 'blue',linewidth=5.))
-ax9.set_xlabel('Wind Direction')
+ax9.set_xlabel('(Initial) Wind Direction')
 
 plt.show()

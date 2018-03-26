@@ -3,3 +3,6 @@
 *.pyc
 *.hdf5
 *.pkl
+*.mp4
+data_files
+

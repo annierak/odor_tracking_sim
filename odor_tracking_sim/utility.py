@@ -137,6 +137,43 @@ def process_wind_data(wind_data_file,release_delay,wind_dt=None):
 #plt.hist(wind_angle);plt.show()
 #raw_input('Done?')
 
+def customaxis(ax, c_left='k', c_bottom='k', c_right='none', c_top='none',
+               lw=1, size=12, pad=8):
+
+    for c_spine, spine in zip([c_left, c_bottom, c_right, c_top],
+                              ['left', 'bottom', 'right', 'top']):
+        if c_spine != 'none':
+            ax.spines[spine].set_color(c_spine)
+            ax.spines[spine].set_linewidth(lw)
+        else:
+            ax.spines[spine].set_color('none')
+    if (c_bottom == 'none') & (c_top == 'none'): # no bottom and no top
+        ax.xaxis.set_ticks_position('none')
+    elif (c_bottom != 'none') & (c_top != 'none'): # bottom and top
+        ax.tick_params(axis='x', direction='out', width=lw, length=7,
+                      color=c_bottom, labelsize=size, pad=pad)
+    elif (c_bottom != 'none') & (c_top == 'none'): # bottom but not top
+        ax.xaxis.set_ticks_position('bottom')
+        ax.tick_params(axis='x', direction='out', width=lw, length=7,
+                       color=c_bottom, labelsize=size, pad=pad)
+    elif (c_bottom == 'none') & (c_top != 'none'): # no bottom but top
+        ax.xaxis.set_ticks_position('top')
+        ax.tick_params(axis='x', direction='out', width=lw, length=7,
+                       color=c_top, labelsize=size, pad=pad)
+    if (c_left == 'none') & (c_right == 'none'): # no left and no right
+        ax.yaxis.set_ticks_position('none')
+    elif (c_left != 'none') & (c_right != 'none'): # left and right
+        ax.tick_params(axis='y', direction='out', width=lw, length=7,
+                       color=c_left, labelsize=size, pad=pad)
+    elif (c_left != 'none') & (c_right == 'none'): # left but not right
+        ax.yaxis.set_ticks_position('left')
+        ax.tick_params(axis='y', direction='out', width=lw, length=7,
+                       color=c_left, labelsize=size, pad=pad)
+    elif (c_left == 'none') & (c_right != 'none'): # no left but right
+        ax.yaxis.set_ticks_position('right')
+        ax.tick_params(axis='y', direction='out', width=lw, length=7,
+                       color=c_right, labelsize=size, pad=pad)
+
 # Testing/development
 # --------------------------------------------------------------------
 if __name__ == '__main__':

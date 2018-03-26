@@ -26,7 +26,7 @@ class BasicSwarmOfFlies(object):
             'initial_heading'     : scipy.radians(scipy.random.uniform(0.0,360.0,(DefaultSize,))),
             'x_start_position'    : scipy.zeros((DefaultSize,)),
             'y_start_position'    : scipy.zeros((DefaultSize,)),
-            'heading_error_std'   : scipy.radians(10.0),
+            'heading_error_std'   : scipy.radians(22.5),
             'flight_speed'        : scipy.full((DefaultSize,), 0.7),
             'release_time'        : scipy.full((DefaultSize,), 0.0),
             'release_time_constant': None,
@@ -170,8 +170,8 @@ class BasicSwarmOfFlies(object):
         #par/perp comps for flys not {released and in fly mode} are set to 0.
         c1 = self.parallel_coeff
         c2 = self.perp_coeff
-        self.x_position += dt*(c1*self.par_wind[0,:]+c2*self.perp_wind[0,:])
-        self.y_position += dt*(c1*self.par_wind[1,:]+c2*self.perp_wind[1,:])
+        self.x_position[mask_startmode] += dt*(c1*self.par_wind[0,mask_startmode]+c2*self.perp_wind[0,mask_startmode])
+        self.y_position[mask_startmode] += dt*(c1*self.par_wind[1,mask_startmode]+c2*self.perp_wind[1,mask_startmode])
 
 
     def update_for_odor_detection(self, dt, odor, wind_uvecs, masks):
@@ -197,11 +197,12 @@ class BasicSwarmOfFlies(object):
         mask_change = dice_roll < odor_probability_upper
         self.mode[mask_change] = self.Mode_FlyUpWind
 
-        # Compute new heading error for flies which change mode
+        # Compute new heading error for flies which change mode according to Laplace dist (Floris paper)
         heading_error_std = self.param['heading_error_std']
-        self.heading_error[mask_change] = heading_error_std*scipy.randn(mask_change.sum())
+        self.heading_error[mask_change] = heading_error_std*scipy.random.laplace(loc=0,scale=1.,size=mask_change.sum())
 
         # Set x and y velocities for the flies which just changed to FlyUpWind.
+        '''This is the insertion of heading error for surging flies'''
         x_unit_change, y_unit_change = rotate_vecs(
                 x_wind_unit[mask_change],
                 y_wind_unit[mask_change],
@@ -253,6 +254,7 @@ class BasicSwarmOfFlies(object):
         self.t_last_cast[mask_change] = t
         self.cast_sign[mask_change] = scipy.random.choice([-1,1],(mask_change.sum(),))
 
+        '''This is the insertion of heading error for casting flies'''
         # Set x and y velocities for new CastForOdor flies
         x_unit_change, y_unit_change = rotate_vecs(
                 x_wind_unit[mask_change],
@@ -392,3 +394,6 @@ class BasicSwarmOfFlies(object):
         #Set the flys who have been release and who are not in start_mode to zero par and zero perp
         self.par_wind[:,mask_release&~mask_startmode] = 0.
         self.perp_wind[:,mask_release&~mask_startmode] = 0.
+        #Set the flys who have not been released to zero par and zero perp
+        # self.par_wind[:,~mask_release] = 0.
+        # self.perp_wind[:,~mask_release] = 0.

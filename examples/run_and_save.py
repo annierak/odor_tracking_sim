@@ -108,7 +108,7 @@ def setup_odor_field(wind_field,traps,plot_scale,puff_mol_amount=None,
     return odor_plot_param,odor_field,plumes
 
 def setup_swarm(swarm_size,wind_field,beta,kappa,start_type, upper_prob,release_delay=0.,
-    heading_data = None, wind_slippage = (0.,0.),upper_threshold=0.02):
+    heading_data = None, wind_slippage = (0.,0.),upper_threshold=0.02,schmitt_trigger=True):
     if wind_field.evolving:
         wind_angle_0 = wind_field.angle[0]
     else:
@@ -142,7 +142,8 @@ def setup_swarm(swarm_size,wind_field,beta,kappa,start_type, upper_prob,release_
             'odor_probabilities'  : {
                 'lower': 0.9,    # detection probability/sec of exposure
                 'upper': upper_prob,  # detection probability/sec of exposure
-                }
+                },
+            'schmitt_trigger':schmitt_trigger
             }
     # print(swarm_param['initial_heading_dist'])
     # print(swarm_param['initial_heading_dist'].mean())
@@ -190,7 +191,7 @@ kappa=0.,t_stop=15000.0,display_speed=1,
 wind_slippage = (0.,0.),swarm_size=10000,start_type='fh',upper_prob=0.002,
 heading_data=None,wind_data_file=None,dt=0.25,wind=True,flies=True,puffs=False,
 plot_scale = 2.0,release_delay=0.,wind_dt=None,video_name=None,wind_speed=0.5,
-puff_horizontal_diffusion=1.,upper_threshold=0.02):
+puff_horizontal_diffusion=1.,upper_threshold=0.02,schmitt_trigger=True):
     if puffs:
         lower_prob = 0.05
         upper_prob = 0.05
@@ -217,7 +218,8 @@ puff_horizontal_diffusion=1.,upper_threshold=0.02):
     if flies:
         swarm = setup_swarm(swarm_size,wind_field,
             release_time_constant, kappa, start_type, upper_prob,release_delay=release_delay,
-            heading_data=heading_data,wind_slippage=wind_slippage,upper_threshold=upper_threshold)
+            heading_data=heading_data,wind_slippage=wind_slippage,upper_threshold=upper_threshold,
+            schmitt_trigger=schmitt_trigger)
     else:
         swarm=None
 
@@ -340,10 +342,10 @@ heading_data = {'angles':(scipy.pi/180)*scipy.array([0.,90.,180.,270.]),
                 }
 wind_data_file = '2017_10_26_wind_vectors_1_min_pre_60_min_post_release.csv'
 
-run_sim('new_hderr_dist',45.,10.,t_stop=600.,
-swarm_size =1000,start_type='fh',wind_slippage=(0.,0.),kappa=0.,upper_prob=0.008,
-display_speed=2.5,heading_data=None,wind_data_file=None,puffs=False,flies=True,
-release_delay=0.,wind_dt=5,video_name='new_hderr_dist')
+# run_sim('lp_filter_trial',45.,10.,t_stop=3000.,
+# swarm_size =1000,start_type='fh',wind_slippage=(0.,0.),kappa=0.,upper_prob=1.,
+# display_speed=2.5,heading_data=None,wind_data_file=None,puffs=False,flies=True,
+# release_delay=0.,wind_dt=5,schmitt_trigger=False,video_name='lp_filter_trial')
 
 # run_sim('flies319_101',45.,10.,t_stop=7800.,
 # swarm_size =1000,start_type='fh',wind_slippage=(0.,0.),kappa=0.,upper_prob=0.008,
@@ -407,6 +409,12 @@ release_delay=0.,wind_dt=5,video_name='new_hderr_dist')
 # swarm_size =1000,start_type='fh',wind_slippage=(0.,0.),kappa=0.,upper_prob=0.002,
 # display_speed=2.5,heading_data=heading_data,wind_data_file=wind_data_file,puffs=True,flies=True,
 # release_delay=10.,wind_dt=5,video_name='flies319_105')
+
+run_sim('lw_filter_dyn_wind',45.,10.,t_stop=4000.,
+swarm_size =1000,start_type='fh',wind_slippage=(0.,0.),kappa=0.,upper_prob=0.002,
+display_speed=2.5,heading_data=heading_data,wind_data_file=wind_data_file,puffs=True,flies=True,
+release_delay=10.,wind_dt=5,schmitt_trigger=False,video_name='lw_filter_dyn_wind')
+
 #
 # run_sim('flies319_106',45.,10.,t_stop=7800.,
 # swarm_size =1000,start_type='fh',wind_slippage=(0.,0.),kappa=0.,upper_prob=0.002,

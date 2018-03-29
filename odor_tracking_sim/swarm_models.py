@@ -1,6 +1,7 @@
 from __future__ import print_function
 import scipy
 import scipy.stats
+import matplotlib.pyplot as plt
 import time
 from odor_models import FakeDiffusionOdorField
 
@@ -20,12 +21,14 @@ class BasicSwarmOfFlies(object):
     """
 
     DefaultSize = 500
+
     DefaultParam = {
             'dt'                  : 0.25,
             'initial_heading_dist': scipy.stats.uniform(0,2*scipy.pi), #continuous_distribution object
             'initial_heading'     : scipy.radians(scipy.random.uniform(0.0,360.0,(DefaultSize,))),
             'x_start_position'    : scipy.zeros((DefaultSize,)),
             'y_start_position'    : scipy.zeros((DefaultSize,)),
+            'heading_error_dist'  : scipy.stats.laplace(loc=0.,scale=1.),
             'heading_error_std'   : scipy.radians(22.5),
             'flight_speed'        : scipy.full((DefaultSize,), 0.7),
             'release_time'        : scipy.full((DefaultSize,), 0.0),
@@ -39,7 +42,8 @@ class BasicSwarmOfFlies(object):
             'odor_probabilities'  : {
                 'lower': 0.9,    # detection probability/sec of exposure
                 'upper': 0.002,  # detection probability/sec of exposure
-                }
+                },
+            'schmitt_trigger' : True
             }
 
     Mode_StartMode = 0
@@ -66,7 +70,9 @@ class BasicSwarmOfFlies(object):
         self.mode = scipy.full((self.size,), self.Mode_StartMode, dtype=int)
         self.heading_error = scipy.zeros((self.size,))
         self.t_last_cast = scipy.zeros((self.size,))
-
+        #in the case of the low pass filter, a vector that tracks time since plume update_for_odor_loss
+        if not(self.param['schmitt_trigger']):
+            self.surging_plumeless_count = scipy.zeros((self.size))
         self.increments_until_turn = scipy.ones((self.size,)) #This is for the Levy walk option.
         #self.uniform_directions_pool = scipy.radians(scipy.random.uniform(0.0,360.0,(100,)))#Again for the Levy walk option, to save time drawing.
         #self.increments_pool = scipy.stats.lognorm.rvs(0.25,size=100,scale=
@@ -187,20 +193,27 @@ class BasicSwarmOfFlies(object):
         mask_startmode = masks['startmode']
         mask_castfor = masks['castfor']
 
-        mask_gt_upper = odor >= self.param['odor_thresholds']['upper']
-        mask_candidates = mask_gt_upper & (mask_startmode | mask_castfor)
-        dice_roll = scipy.full((self.size,),scipy.inf)
-        dice_roll[mask_candidates] = scipy.rand(mask_candidates.sum())
+        if self.param['schmitt_trigger']:
+        #Case where mask_change (to surging) is determined by Schmitt trigger
+            mask_gt_upper = odor >= self.param['odor_thresholds']['upper']
+            mask_candidates = mask_gt_upper & (mask_startmode | mask_castfor)
+            dice_roll = scipy.full((self.size,),scipy.inf)
+            dice_roll[mask_candidates] = scipy.rand(mask_candidates.sum())
 
-        # Convert probabilty/sec to probabilty for time step interval dt
-        odor_probability_upper = 1.0 - (1.0 - self.param['odor_probabilities']['upper'])**dt
-        mask_change = dice_roll < odor_probability_upper
-        self.mode[mask_change] = self.Mode_FlyUpWind
+            # Convert probabilty/sec to probabilty for time step interval dt
+            odor_probability_upper = 1.0 - (1.0 - self.param['odor_probabilities']['upper'])**dt
+            mask_change = dice_roll < odor_probability_upper
+            self.mode[mask_change] = self.Mode_FlyUpWind
+        else:
+        #Case where mask_change (to surging) is determined by low-pass filter
+            mask_gt_upper = odor >= self.param['odor_thresholds']['upper']
+            mask_change = mask_gt_upper & (mask_startmode | mask_castfor)
+            self.mode[mask_change] = self.Mode_FlyUpWind
 
         # Compute new heading error for flies which change mode according to Laplace dist (Floris paper)
         heading_error_std = self.param['heading_error_std']
-        self.heading_error[mask_change] = heading_error_std*scipy.random.laplace(loc=0,scale=1.,size=mask_change.sum())
-
+        distf = self.param['heading_error_dist'] #this variable is a pdf
+        self.heading_error[mask_change] = heading_error_std*distf.rvs(size=mask_change.sum())
         # Set x and y velocities for the flies which just changed to FlyUpWind.
         '''This is the insertion of heading error for surging flies'''
         x_unit_change, y_unit_change = rotate_vecs(
@@ -227,24 +240,41 @@ class BasicSwarmOfFlies(object):
         mask_flyupwd = masks['flyupwd']
         mask_castfor = masks['castfor']
 
-        mask_lt_lower = odor <= self.param['odor_thresholds']['lower']
-        mask_candidates = mask_lt_lower & mask_flyupwd
-        dice_roll = scipy.full((self.size,),scipy.inf)
-        dice_roll[mask_candidates] = scipy.rand(mask_candidates.sum())
+        if self.param['schmitt_trigger']:
 
-        # Convert probabilty/sec to probabilty for time step interval dt
-        odor_probability_lower = 1.0 - (1.0 - self.param['odor_probabilities']['lower'])**dt
-        mask_change = dice_roll < odor_probability_lower
-        self.mode[mask_change] = self.Mode_CastForOdor
+            mask_lt_lower = odor <= self.param['odor_thresholds']['lower']
+            mask_candidates = mask_lt_lower & mask_flyupwd
+            dice_roll = scipy.full((self.size,),scipy.inf)
+            dice_roll[mask_candidates] = scipy.rand(mask_candidates.sum())
+
+            # Convert probabilty/sec to probabilty for time step interval dt
+            odor_probability_lower = 1.0 - (1.0 - self.param['odor_probabilities']['lower'])**dt
+            mask_change = dice_roll < odor_probability_lower
+            self.mode[mask_change] = self.Mode_CastForOdor
+        else:
+            #Find the indices of the flys below the (single) threshold
+            mask_blw_thres = odor <= self.param['odor_thresholds']['upper']
+            #Filter by the flies who are surging
+            mask_candidates = mask_blw_thres & mask_flyupwd
+            #If the fly's counter is at 0, or at 1, add 1 to the counter and do nothing (preserve mode)
+            mask_categ1 = mask_candidates & ((self.surging_plumeless_count==0) | (self.surging_plumeless_count==1))
+            self.surging_plumeless_count[mask_categ1] +=1
+            print(str(sum(self.surging_plumeless_count>0))+'flies surging plumeless')
+            self.mode[mask_categ1] = self.Mode_FlyUpWind
+            #If the fly's counter is at 2, assign to casting mode, and reset counter to 0
+            mask_change = mask_candidates & (self.surging_plumeless_count==2)
+            self.surging_plumeless_count[mask_change] =0
+            self.mode[mask_change] = self.Mode_CastForOdor
+
 
         # Lump together flies changing to CastForOdor mode with casting flies which are
         # changing direction (e.g. time to make cast direction change)
         mask_change |= mask_castfor & (t > (self.t_last_cast + self.dt_next_cast))
 
-        # Computer new heading errors for flies which change mode
+        # Computer new heading errors for flies which change mode (to casting)
         self.heading_error[mask_change] = self.param['heading_error_std']*scipy.randn(mask_change.sum())
 
-        # Set new cast intervals and directions for flies chaning to CastForOdor or starting a new cast
+        # Set new cast intervals and directions for flies changing to CastForOdor or starting a new cast
         cast_interval = self.param['cast_interval']
         self.dt_next_cast[mask_change] = scipy.random.uniform(
                 cast_interval[0],

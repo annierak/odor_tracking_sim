@@ -287,8 +287,8 @@ class BasicSwarmOfFlies(object):
         '''This is the insertion of heading error for casting flies'''
         # Set x and y velocities for new CastForOdor flies
         x_unit_change, y_unit_change = rotate_vecs(
-                x_wind_unit[mask_change],
-               -y_wind_unit[mask_change],
+                y_wind_unit[mask_change],
+               -x_wind_unit[mask_change],
                 self.heading_error[mask_change]
                 )
         speed = self.param['flight_speed'][mask_change]

@@ -342,10 +342,15 @@ heading_data = {'angles':(scipy.pi/180)*scipy.array([0.,90.,180.,270.]),
                 }
 wind_data_file = '2017_10_26_wind_vectors_1_min_pre_60_min_post_release.csv'
 
-# run_sim('lp_filter_trial',45.,10.,t_stop=3000.,
+# run_sim('lp_filter_trial_2',45.,10.,t_stop=3000.,
 # swarm_size =1000,start_type='fh',wind_slippage=(0.,0.),kappa=0.,upper_prob=1.,
 # display_speed=2.5,heading_data=None,wind_data_file=None,puffs=False,flies=True,
-# release_delay=0.,wind_dt=5,schmitt_trigger=False,video_name='lp_filter_trial')
+# release_delay=0.,wind_dt=5,schmitt_trigger=False,video_name='lp_filter_trial_2')
+
+run_sim('casting_inspection',45.,10.,t_stop=3000.,
+swarm_size =100,start_type='fh',wind_slippage=(0.,0.),kappa=0.,upper_prob=1.,
+display_speed=.25,heading_data=None,wind_data_file=None,puffs=False,flies=True,
+release_delay=0.,wind_dt=5,schmitt_trigger=False,video_name='casting_inspection')
 
 # run_sim('flies319_101',45.,10.,t_stop=7800.,
 # swarm_size =1000,start_type='fh',wind_slippage=(0.,0.),kappa=0.,upper_prob=0.008,
@@ -410,10 +415,10 @@ wind_data_file = '2017_10_26_wind_vectors_1_min_pre_60_min_post_release.csv'
 # display_speed=2.5,heading_data=heading_data,wind_data_file=wind_data_file,puffs=True,flies=True,
 # release_delay=10.,wind_dt=5,video_name='flies319_105')
 
-run_sim('lw_filter_dyn_wind',45.,10.,t_stop=4000.,
-swarm_size =1000,start_type='fh',wind_slippage=(0.,0.),kappa=0.,upper_prob=0.002,
-display_speed=2.5,heading_data=heading_data,wind_data_file=wind_data_file,puffs=True,flies=True,
-release_delay=10.,wind_dt=5,schmitt_trigger=False,video_name='lw_filter_dyn_wind')
+# run_sim('lw_filter_dyn_wind',45.,10.,t_stop=4000.,
+# swarm_size =1000,start_type='fh',wind_slippage=(0.,0.),kappa=0.,upper_prob=0.002,
+# display_speed=2.5,heading_data=heading_data,wind_data_file=wind_data_file,puffs=True,flies=True,
+# release_delay=10.,wind_dt=5,schmitt_trigger=False,video_name='lw_filter_dyn_wind')
 
 #
 # run_sim('flies319_106',45.,10.,t_stop=7800.,

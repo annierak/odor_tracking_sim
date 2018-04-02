@@ -11,6 +11,7 @@ class TrapModel(object):
     def __init__(self,param={}):
         self.param = dict(self.DefaultParam)
         self.param.update(param)
+        self.num_traps = len(self.param['source_strengths'])
 
     def check_if_in_trap(self,pos):
         for trap_num, trap_loc in enumerate(self.param['source_locations']):

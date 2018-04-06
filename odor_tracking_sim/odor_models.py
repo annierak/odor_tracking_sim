@@ -132,6 +132,8 @@ class FakeDiffusionOdorField(object):
         plt.grid('on')
         plt.xlabel('x (m)')
         plt.ylabel('y (m)')
+        plt.xlim(xlim)
+        plt.ylim(ylim)
         if threshold is not None:
             plt.figure(fignums[1])
             odor_thresh = odor_value >= threshold

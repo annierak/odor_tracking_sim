@@ -37,7 +37,7 @@ def setup_wind_field(wind_angle,wind_data_file,dt,release_delay,wind_dt=None,win
     wind_field = wind_models.WindField(param=wind_param)
     return wind_field
 
-def setup_traps(number_sources = 6,radius_sources = 400.0,strength_sources = 10.0,
+def setup_traps(number_sources = 6,radius_sources = 1000.0,strength_sources = 10.0,
 trap_radius = 5.):
     if number_sources>1:
         #Standard geometry: 6 traps around the center
@@ -73,8 +73,8 @@ def setup_odor_field(wind_field,traps,plot_scale,puff_mol_amount=None,
         ylim = (-plot_size, plot_size)
     else:
         #Toy example with just one trap
-        xlim = (-0.1*traps.param['source_radius'],1.2*traps.param['source_radius'])
-        ylim = (-0.1*traps.param['source_radius'],1.2*traps.param['source_radius'])
+        xlim = (-0.25*traps.param['source_radius'],0.25*traps.param['source_radius'])
+        ylim = (-0.1*traps.param['source_radius'],0.75*traps.param['source_radius'])
 
     if not(puffs):
         '''This is Will's odor implementation'''
@@ -119,7 +119,8 @@ def setup_odor_field(wind_field,traps,plot_scale,puff_mol_amount=None,
     return odor_plot_param,odor_field,plumes
 
 def setup_swarm(swarm_size,wind_field,beta,kappa,start_type, upper_prob,release_delay=0.,
-    heading_data = None, wind_slippage = (0.,0.),upper_threshold=0.02,schmitt_trigger=True):
+    heading_data = None, wind_slippage = (0.,0.),upper_threshold=0.02,schmitt_trigger=True,
+    heading_mean=None,track_plume_bouts=False):
     if wind_field.evolving:
         wind_angle_0 = wind_field.angle[0]
     else:
@@ -128,13 +129,15 @@ def setup_swarm(swarm_size,wind_field,beta,kappa,start_type, upper_prob,release_
     if kappa==0:
         dist = scipy.stats.uniform(0.,2*scipy.pi)
     else:
-        dist= scipy.stats.vonmises(loc=wind_angle_0,kappa=kappa)
+        if heading_mean is None:
+            heading_mean = wind_angle_0
+        dist= scipy.stats.vonmises(loc=heading_mean,kappa=kappa)
     swarm_param = {
         #    'initial_heading'     : scipy.radians(scipy.random.uniform(0.0,360.0,(swarm_size,))),
             'swarm_size'          : swarm_size,
             'heading_data'        : heading_data,
             'initial_heading_dist': dist,
-            'initial_heading'     : scipy.random.vonmises(wind_angle_0,kappa,(swarm_size,)),
+            'initial_heading'     : scipy.random.vonmises(heading_mean,kappa,(swarm_size,)),
             'x_start_position'    : scipy.zeros((swarm_size,)),
             'y_start_position'    : scipy.zeros((swarm_size,)),
             'heading_error_std'   : scipy.radians(10.0),
@@ -144,7 +147,7 @@ def setup_swarm(swarm_size,wind_field,beta,kappa,start_type, upper_prob,release_
             'release_time'        : release_times,
             'release_time_constant': beta,
             'release_delay'       : release_delay*60,
-            'cast_interval'       : [60.0, 1000.0],
+            'cast_interval'       : [1.0, 10.0],
             'wind_slippage'       : wind_slippage,
             'odor_thresholds'     : {
                 'lower': 0.002,
@@ -158,7 +161,8 @@ def setup_swarm(swarm_size,wind_field,beta,kappa,start_type, upper_prob,release_
             }
     # print(swarm_param['initial_heading_dist'])
     # print(swarm_param['initial_heading_dist'].mean())
-    swarm = swarm_models.BasicSwarmOfFlies(wind_field,param=swarm_param,start_type=start_type)
+    swarm = swarm_models.BasicSwarmOfFlies(wind_field,param=swarm_param,
+    start_type=start_type,track_plume_bouts=track_plume_bouts)
     # time.sleep(10)
     return swarm
 
@@ -172,8 +176,20 @@ def initial_plot(odor_field,plot_param,flies,release_delay,swarm=None,fignum=1,p
         #Pompy version
         conc_array = (odor_field.generate_single_array(plumes.puff_array).T[::-1])
         image=odor_field.plot(conc_array,plot_param)
-
     plot_dict.update({'image':image})
+
+    #Sub-dictionary for color codes for the fly modes
+    Mode_StartMode = 0
+    Mode_FlyUpWind = 1
+    Mode_CastForOdor = 2
+    Mode_Trapped = 3
+
+    color_dict = {Mode_StartMode : 'blue',
+    Mode_FlyUpWind : 'red',
+    Mode_CastForOdor : 'orange',
+    Mode_Trapped :   'black'}
+
+    plot_dict.update({'color_dict':color_dict})
 
     #Initial fly plots
     plt.ion()
@@ -190,7 +206,8 @@ def initial_plot(odor_field,plot_param,flies,release_delay,swarm=None,fignum=1,p
     plt.figure(fignum)
     plot_dict.update({'fignum':fignum})
     if flies:
-        fly_dots, = plt.plot(swarm.x_position, swarm.y_position,'.r')
+        fly_colors = [color_dict[mode] for mode in swarm.mode]
+        fly_dots = plt.scatter(swarm.x_position, swarm.y_position,color=fly_colors,alpha=0.5)
         plot_dict.update({'fly_dots':fly_dots})
 
     return plot_dict

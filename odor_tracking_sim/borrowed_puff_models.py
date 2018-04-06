@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import matplotlib
 import wind_models
 import odor_models
+import time
 
 class Rectangle(object):
 

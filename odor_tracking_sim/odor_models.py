@@ -4,6 +4,7 @@ import scipy
 import scipy.special
 import matplotlib.pyplot as plt
 import wind_models
+import time
 
 from .utility import shift_and_rotate
 from .utility import rotation_matrix
@@ -56,8 +57,8 @@ class FakeDiffusionOdorField(object):
             wind_angle = self.param['wind_field'].angle
             wind_speed = self.param['wind_field'].speed
         traps = self.traps
-        source_locations = traps.param['source_locations']
-        source_strengths = traps.param['source_strengths']
+        source_locations = self.param['source_locations']
+        source_strengths = self.param['source_strengths']
         dcoeff = self.param['diffusion_coeff']
         epsilon = self.param['epsilon']
 
@@ -107,7 +108,6 @@ class FakeDiffusionOdorField(object):
         ylim = plot_param['ylim']
         cmap = plot_param['cmap']
 
-
         try:
             threshold = plot_param['threshold']
         except KeyError:
@@ -119,14 +119,14 @@ class FakeDiffusionOdorField(object):
             fignums = (1,2)
 
         odor_mesh = self.value_to_mesh(t,plot_param)
-
+        # plt.figure(100);plt.hist(odor_mesh);plt.show();time.sleep(20)
         plt.figure(fignums[0])
         image = plt.imshow(odor_mesh, extent=(xlim[0],xlim[1],ylim[0],ylim[1]),cmap=cmap)
-        for x,y in self.traps.param['source_locations']:
+        for x,y in self.param['source_locations']:
             #plt.plot([x],[y],'ok')
             s = scipy.linspace(0,2.0*scipy.pi,100)
-            cx = x + self.traps.param['trap_radius']*scipy.cos(s)
-            cy = y + self.traps.param['trap_radius']*scipy.sin(s)
+            cx = x + self.param['trap_radius']*scipy.cos(s)
+            cy = y + self.param['trap_radius']*scipy.sin(s)
             plt.plot(cx,cy,'k')
         plt.plot([0],[0],'ob')
         plt.grid('on')

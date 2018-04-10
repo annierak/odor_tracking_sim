@@ -35,7 +35,8 @@ heading_mean=None,track_plume_bouts=False):
     output_file = file_name+'.pkl'
     #Create wind field,
     #Release delay is in minutes
-    wind_field=srt.setup_wind_field(wind_angle,wind_data_file,dt,release_delay,wind_dt=wind_dt,wind_speed=wind_speed)
+    wind_field=srt.setup_wind_field(wind_angle,wind_data_file,dt,
+    release_delay,wind_dt=wind_dt,wind_speed=wind_speed)
 
     # if wind_field.param['negative_time']>0:
     #     release_delay=wind_field.param['negative_time']
@@ -62,7 +63,8 @@ heading_mean=None,track_plume_bouts=False):
 
     # Setup live plot
     '''Plot the initial odor field'''
-    plot_dict = srt.initial_plot(odor_field,odor_plot_param,flies,release_delay,swarm=swarm,fignum = 1,plumes=plumes)
+    plot_dict = srt.initial_plot(odor_field,odor_plot_param,
+    flies,release_delay,swarm=swarm,fignum = 1,plumes=plumes)
     fig = plot_dict['fig']
     fig.set_size_inches(8,8,True)
     fig.canvas.flush_events()
@@ -90,8 +92,8 @@ heading_mean=None,track_plume_bouts=False):
                 swarm.update(t,dt,wind_field,odor_field,traps,plumes=plumes)
             except(IndexError):
                 print('Out of wind data')
-
                 sys.exit()
+
         #Update the plumes
         if plumes is not None:
             plumes.update(t, dt)
@@ -172,7 +174,7 @@ heading_mean=None,track_plume_bouts=False):
             fig.canvas.flush_events()
             t_plot_last = t
 
-            time.sleep(0.5)
+        #    time.sleep(0.5)
 
         #end = time.time()
     # Write swarm to file
@@ -262,11 +264,17 @@ wind_data_file = '2017_10_26_wind_vectors_1_min_pre_60_min_post_release.csv'
 # release_delay=0.,wind_dt=5,number_sources=6,schmitt_trigger=False,track_plume_bouts=True,
 # video_name='plume_bout_tracking_test_2')
 
-run_sim('plume_bout_tracking_debugging',225.,10.,t_stop=3000.,
-swarm_size =15,start_type='fh',wind_slippage=(0.,0.),kappa=2.,upper_prob=1.,
-display_speed=1.25,heading_data=None,wind_data_file=None,puffs=False,flies=True,
-release_delay=0.,wind_dt=5,number_sources=1,schmitt_trigger=False,track_plume_bouts=True,
-video_name='plume_bout_tracking_debugging',heading_mean=115.)
+# run_sim('plume_bout_tracking_debugging',225.,10.,t_stop=3000.,
+# swarm_size =15,start_type='fh',wind_slippage=(0.,0.),kappa=2.,upper_prob=1.,
+# display_speed=1.25,heading_data=None,wind_data_file=None,puffs=False,flies=True,
+# release_delay=0.,wind_dt=5,number_sources=1,schmitt_trigger=False,track_plume_bouts=True,
+# video_name='plume_bout_tracking_debugging',heading_mean=115.)
+
+run_sim('plume_bout_tracking_take_2',45.,10.,t_stop=3000.,
+swarm_size =3000,start_type='fh',wind_slippage=(0.,0.),kappa=0.,upper_prob=1.,
+display_speed=2.5,heading_data=None,wind_data_file=None,puffs=False,flies=True,
+release_delay=0.,wind_dt=5,number_sources=6,schmitt_trigger=False,track_plume_bouts=True,
+video_name='plume_bout_tracking_take_2')
 
 # run_sim('highe_prob',45.,10.,t_stop=2000.,
 # swarm_size =1000,start_type='fh',wind_slippage=(0.,0.),kappa=0.,upper_prob=0.025    ,

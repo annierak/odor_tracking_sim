@@ -1,3 +1,5 @@
+
+
 import time
 import scipy
 import matplotlib.pyplot as plt
@@ -193,9 +195,11 @@ def initial_plot(odor_field,plot_param,flies,release_delay,swarm=None,fignum=1,p
 
     #Initial fly plots
     plt.ion()
+    print(fignum)
     fig = plt.figure(fignum)
     plot_dict.update({'fig':fig})
     ax = plt.subplot(111)
+
 
     #Put the time in the corner
     (xmin,xmax) = ax.get_xlim();(ymin,ymax) = ax.get_ylim()

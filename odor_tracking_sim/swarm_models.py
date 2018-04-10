@@ -54,7 +54,7 @@ class BasicSwarmOfFlies(object):
 
 
     def __init__(self,wind_field,param={},start_type='fh',
-    track_plume_bouts=False): #default start type is fixed heading
+    track_plume_bouts=False,track_arena_exits=False): #default start type is fixed heading
         self.param = dict(self.DefaultParam)
         self.param.update(param)
         self.check_param()
@@ -62,7 +62,9 @@ class BasicSwarmOfFlies(object):
         self.x_position = self.param['x_start_position']
         self.y_position = self.param['y_start_position']
         self.track_plume_bouts = track_plume_bouts
-
+        self.track_arena_exits=track_arena_exits
+        if self.track_arena_exits:
+            self.still_in_arena = scipy.full(scipy.shape(self.x_position),True,dtype=bool)
         if(not(self.param['heading_data']==None)):
             heading_data = self.param['heading_data']
             (mean,kappa) = fit_von_mises(heading_data)
@@ -82,9 +84,10 @@ class BasicSwarmOfFlies(object):
         #in the plume currently
         if self.track_plume_bouts:
             self.timesteps_since_plume_entry = scipy.full(self.size,scipy.nan)
-        #also, a vector with one entry per plume bout for plume bout's length,
-        #estimated length is 2x size of swarm
-            self.plume_bout_lengths = scipy.zeros((2*self.size))
+        #also, a matrix that tracks plume bout lengths for each fly,
+        #estimated rows is 100
+            self.plume_bout_lengths = scipy.zeros((100,self.size))
+            self.plume_bout_lengths_row = 0
         self.increments_until_turn = scipy.ones((self.size,)) #This is for the Levy walk option.
         #self.uniform_directions_pool = scipy.radians(scipy.random.uniform(0.0,360.0,(100,)))#Again for the Levy walk option, to save time drawing.
         #self.increments_pool = scipy.stats.lognorm.rvs(0.25,size=100,scale=
@@ -128,7 +131,7 @@ class BasicSwarmOfFlies(object):
         return self.param['initial_heading'].shape[0]
 
 
-    def update(self, t, dt, wind_field, odor_field,traps,plumes=None):
+    def update(self, t, dt, wind_field, odor_field,traps,plumes=None,xlim=None,ylim=None):
         """
         Update fly swarm one time step.
         """
@@ -180,6 +183,14 @@ class BasicSwarmOfFlies(object):
         mask_trapped = self.mode == self.Mode_Trapped
 
         self.update_positions(mask_release,mask_trapped,mask_startmode,dt)
+
+        #check for flies that have left the arena
+        if self.track_arena_exits:
+            inside_x_bounds = (xlim[0]<=self.x_position) & (self.x_position<=xlim[1])
+            inside_y_bounds = (ylim[0]<=self.y_position) & (self.y_position<=ylim[1])
+            inside_bounds = inside_x_bounds & inside_y_bounds
+            self.still_in_arena = self.still_in_arena & inside_bounds
+            print(sum(self.still_in_arena))
 
         #Original: apply wind slippage to all flies
         #mask_move = mask_release & (~mask_trapped)
@@ -279,7 +290,6 @@ class BasicSwarmOfFlies(object):
             #If the fly's counter is at 0, or at 1, add 1 to the counter and do nothing (preserve mode)
             mask_categ1 = mask_candidates & ((self.surging_plumeless_count==0) | (self.surging_plumeless_count==1))
             self.surging_plumeless_count[mask_categ1] +=1
-            print(str(sum(self.surging_plumeless_count>0))+'flies surging plumeless')
             self.mode[mask_categ1] = self.Mode_FlyUpWind
             #If the fly's counter is at 2, assign to casting mode, and reset counter to 0
             mask_change = mask_candidates & (self.surging_plumeless_count==2)
@@ -287,22 +297,17 @@ class BasicSwarmOfFlies(object):
         #In both cases set mask_change to cast for odor mode
         self.mode[mask_change] = self.Mode_CastForOdor
         #Then drop these flies' plume bout durations into plume_bout_lengths
-        if self.track_plume_bouts:
-            #(a) find the index j of the first empty spot in plume_bout_lengths
-            j = utf1st.find_1st(self.plume_bout_lengths, 0, utf1st.cmp_equal)
-            if j<0:
-                self.plume_bout_lengths = scipy.append(self.plume_bout_lengths,scipy.zeros(self.size))
-            #(b) fill plume_bout_lengths entries j through j+k,
-            # where k is the number of flies switching to casting at this time step,
-            # with the k plume bout durations indexed by mask_change
-            k = sum(mask_change)
-            while True:
-                try:
-                    self.plume_bout_lengths[j:j+k] = self.timesteps_since_plume_entry[mask_change]
-                    print('bouts: '+str(self.plume_bout_lengths[(self.plume_bout_lengths>0)]))
-                    break
-                except ValueError:
-                    self.plume_bout_lengths = scipy.append(self.plume_bout_lengths,scipy.zeros(self.size))
+        if self.track_plume_bouts & sum(mask_change)>0:
+            #(a) grab the saved index j of the first empty row in plume_bout_lengths
+            j = self.plume_bout_lengths_row
+            if j>scipy.shape(self.plume_bout_lengths)[0]-1:
+                self.plume_bout_lengths = scipy.append(
+                self.plume_bout_lengths,scipy.zeros((100,self.size)),axis=0)
+                print('appending')
+            #(b) fill plume_bout_lengths row j
+            self.plume_bout_lengths[j,mask_change] = self.timesteps_since_plume_entry[mask_change]
+            #move up row counter
+            self.plume_bout_lengths_row+=1
             #Reassign these indices of timesteps_since_plume_entry to nan
             self.timesteps_since_plume_entry[mask_change]=scipy.nan
 
@@ -413,8 +418,6 @@ class BasicSwarmOfFlies(object):
             which makes the max occuring duration around 300 s= 5 min.'''
             sigma = 0.5
             mu = 0.
-        #Every fly
-
         #Every startmode fly has one time step less left in current direction
             self.increments_until_turn[mask_startmode&mask_move] -=1
             #print(self.increments_until_turn[mask_startmode&mask_move])

@@ -38,7 +38,6 @@ trap_axes = [ax1,ax2,ax3,ax4,ax5,ax6]
 
 peak_counts = scipy.zeros(len(trap_axes))
 rasters = []
-print(trap_num_list)
 for i in trap_num_list:
     t = swarm.get_time_trapped(i)
     ax = trap_axes[i]

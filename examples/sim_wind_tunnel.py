@@ -82,7 +82,7 @@ upper_threshold=0.001,schmitt_trigger=True,track_plume_bouts=False):
             'schmitt_trigger':schmitt_trigger
             }
 
-    swarm = swarm_models.BasicSwarmOfFlies(wind_field,param=swarm_param,
+    swarm = swarm_models.BasicSwarmOfFlies(wind_field,traps,param=swarm_param,
         start_type='fh',track_plume_bouts=track_plume_bouts,track_arena_exits=True)
     plot_dict = srt.initial_plot(odor_field,odor_plot_param,True,0.,
     swarm=swarm,fignum = 1,plumes=None)

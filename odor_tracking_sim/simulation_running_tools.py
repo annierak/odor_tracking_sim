@@ -120,7 +120,7 @@ def setup_odor_field(wind_field,traps,plot_scale,puff_mol_amount=None,
             'cmap' : plt.cm.YlGnBu}
     return odor_plot_param,odor_field,plumes
 
-def setup_swarm(swarm_size,wind_field,beta,kappa,start_type, upper_prob,release_delay=0.,
+def setup_swarm(swarm_size,wind_field,traps,beta,kappa,start_type, upper_prob,release_delay=0.,
     heading_data = None, wind_slippage = (0.,0.),upper_threshold=0.02,schmitt_trigger=True,
     heading_mean=None,track_plume_bouts=False):
     if wind_field.evolving:
@@ -163,7 +163,7 @@ def setup_swarm(swarm_size,wind_field,beta,kappa,start_type, upper_prob,release_
             }
     # print(swarm_param['initial_heading_dist'])
     # print(swarm_param['initial_heading_dist'].mean())
-    swarm = swarm_models.BasicSwarmOfFlies(wind_field,param=swarm_param,
+    swarm = swarm_models.BasicSwarmOfFlies(wind_field,traps,param=swarm_param,
     start_type=start_type,track_plume_bouts=track_plume_bouts)
     # time.sleep(10)
     return swarm

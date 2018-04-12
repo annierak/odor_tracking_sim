@@ -1,2 +1,2 @@
 import utility
-val = utility.test_function(10)
+# val = utility.test_function(10)

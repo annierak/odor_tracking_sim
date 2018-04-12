@@ -10,6 +10,7 @@ from utility import rotate_vecs
 from utility import distance
 from utility import par_perp
 from utility import fit_von_mises
+from utility import cartesian_to_polar
 import utils_find_1st as utf1st
 
 
@@ -53,7 +54,7 @@ class BasicSwarmOfFlies(object):
     Mode_Trapped = 3
 
 
-    def __init__(self,wind_field,param={},start_type='fh',
+    def __init__(self,wind_field,traps,param={},start_type='fh',
     track_plume_bouts=False,track_arena_exits=False): #default start type is fixed heading
         self.param = dict(self.DefaultParam)
         self.param.update(param)
@@ -63,6 +64,7 @@ class BasicSwarmOfFlies(object):
         self.y_position = self.param['y_start_position']
         self.track_plume_bouts = track_plume_bouts
         self.track_arena_exits=track_arena_exits
+        self.num_traps = traps.num_traps
         if self.track_arena_exits:
             self.still_in_arena = scipy.full(scipy.shape(self.x_position),True,dtype=bool)
         if(not(self.param['heading_data']==None)):
@@ -107,6 +109,7 @@ class BasicSwarmOfFlies(object):
         self.x_trap_loc = scipy.zeros((self.size,))
         self.y_trap_loc = scipy.zeros((self.size,))
         self.t_in_trap = scipy.full((self.size,),scipy.inf)
+        self.angle_in_trap = scipy.full(self.size,scipy.inf)
         self.start_type = start_type #Either 'fh' (fixed heading) or 'rw' (random walk)
         if start_type=='rw':
             self.rw_dist = scipy.stats.lognorm(0.25,scale=1)
@@ -351,14 +354,24 @@ class BasicSwarmOfFlies(object):
             mask_trapped = dist_vals < traps.param['trap_radius']
             self.mode[mask_trapped] = self.Mode_Trapped
             self.trap_num[mask_trapped] = trap_num
+
             self.x_trap_loc[mask_trapped] = trap_loc[0]
             self.y_trap_loc[mask_trapped] = trap_loc[1]
-            self.x_velocity[mask_trapped] = 0.0
-            self.y_velocity[mask_trapped] = 0.0
 
             # Get time stamp for newly trapped flies
             mask_newly_trapped = mask_trapped & (self.t_in_trap == scipy.inf)
             self.t_in_trap[mask_newly_trapped] = t
+
+            #Get arrival angle for newly trapped flies
+            vfunc = scipy.vectorize(cartesian_to_polar)
+            xvels,yvels = self.x_velocity[mask_newly_trapped],self.y_velocity[mask_newly_trapped]
+            if scipy.size(xvels)>0:
+                _,thetas = vfunc(xvels,yvels)
+                self.angle_in_trap[mask_newly_trapped] = thetas
+
+            #Stop the flies trapped
+            self.x_velocity[mask_trapped] = 0.0
+            self.y_velocity[mask_trapped] = 0.0
 
 
     def get_time_trapped(self,trap_num=None,straight_shots=False):
@@ -372,15 +385,27 @@ class BasicSwarmOfFlies(object):
             mask_trapped_in_num = mask_trapped & (self.trap_num == trap_num)
             return self.t_in_trap[mask_trapped_in_num]
 
+    def get_angle_trapped(self,trap_num):
+        mask_trapped = self.mode == self.Mode_Trapped
+        mask_trapped_in_num = mask_trapped & (self.trap_num == trap_num)
+        return self.angle_in_trap[mask_trapped_in_num]
+
+
     def get_trap_nums(self):
         mask_trap_num_set = self.trap_num != -1
         trap_num_array = scipy.unique(self.trap_num[mask_trap_num_set])
         trap_num_array.sort()
         return list(trap_num_array)
 
+    def list_all_traps(self):
+        return(range(self.num_traps))
+
     def get_trap_counts(self):
         mask_trap_num_set = self.trap_num != -1
-        (trap_num_array,trap_counts)=scipy.unique(self.trap_num[mask_trap_num_set],return_counts = True)
+        (trap_num_array,trap_counts)=scipy.unique(
+        self.trap_num[mask_trap_num_set],return_counts = True)
+        trap_counts = scipy.zeros(self.num_traps)
+        trap_counts[trap_num_array] = trap_counts
         return trap_counts
 
     def update_positions(self,mask_release,mask_trapped,mask_startmode,dt):

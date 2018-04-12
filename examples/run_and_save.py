@@ -54,7 +54,7 @@ heading_mean=None,track_plume_bouts=False):
 
     '''Get swarm ready'''
     if flies:
-        swarm = srt.setup_swarm(swarm_size,wind_field,
+        swarm = srt.setup_swarm(swarm_size,wind_field,traps,
             release_time_constant, kappa, start_type, upper_prob,release_delay=release_delay,
             heading_data=heading_data,wind_slippage=wind_slippage,upper_threshold=upper_threshold,
             schmitt_trigger=schmitt_trigger,heading_mean=heading_mean,track_plume_bouts=track_plume_bouts)
@@ -93,7 +93,6 @@ heading_mean=None,track_plume_bouts=False):
             except(IndexError):
                 print('Out of wind data')
                 sys.exit()
-
         #Update the plumes
         if plumes is not None:
             plumes.update(t, dt)
@@ -270,11 +269,18 @@ wind_data_file = '2017_10_26_wind_vectors_1_min_pre_60_min_post_release.csv'
 # release_delay=0.,wind_dt=5,number_sources=1,schmitt_trigger=False,track_plume_bouts=True,
 # video_name='plume_bout_tracking_debugging',heading_mean=115.)
 
-run_sim('plume_bout_tracking_take_2',45.,10.,t_stop=3000.,
+# run_sim('plume_bout_tracking_take_2',45.,10.,t_stop=3000.,
+# swarm_size =3000,start_type='fh',wind_slippage=(0.,0.),kappa=0.,upper_prob=1.,
+# display_speed=2.5,heading_data=None,wind_data_file=None,puffs=False,flies=True,
+# release_delay=0.,wind_dt=5,number_sources=6,schmitt_trigger=False,track_plume_bouts=True,
+# video_name='plume_bout_tracking_take_2')
+
+run_sim('angle_arrival_test',45.,10.,t_stop=1500.,
 swarm_size =3000,start_type='fh',wind_slippage=(0.,0.),kappa=0.,upper_prob=1.,
 display_speed=2.5,heading_data=None,wind_data_file=None,puffs=False,flies=True,
 release_delay=0.,wind_dt=5,number_sources=6,schmitt_trigger=False,track_plume_bouts=True,
-video_name='plume_bout_tracking_take_2')
+video_name='angle_arrival_test')
+
 
 # run_sim('highe_prob',45.,10.,t_stop=2000.,
 # swarm_size =1000,start_type='fh',wind_slippage=(0.,0.),kappa=0.,upper_prob=0.025    ,

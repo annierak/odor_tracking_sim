@@ -76,8 +76,11 @@ def par_perp(u,v):
     par = (scipy.inner(u,v))/(scipy.inner(v,v))*v
     perp = u - par
     return par,perp
-def test_function(x):
-    return x
+
+def cartesian_to_polar(x,y):
+    r = math.sqrt(x**2+y**2)
+    theta = math.atan(y/x)
+    return (r,theta)
 
 
 def fit_von_mises(heading_data):
@@ -99,7 +102,6 @@ def fit_von_mises(heading_data):
     #raw_input('Done?')
     return mu_est, kappa_est
 
-wind_data_file = '10_26_wind_vectors.csv'
 
 def process_wind_data(wind_data_file,release_delay,wind_dt=None):
     #Takes in a csv file and outputs wind_angle,wind_speed,wind_dt
@@ -130,12 +132,6 @@ def process_wind_data(wind_data_file,release_delay,wind_dt=None):
     wind_speed = mph*(1/3600.)*1609.34
     return {'wind_angle':wind_angle,'wind_speed': wind_speed,'wind_dt':wind_dt}
 
-#wind_angle,wind_speed,wind_dt = process_wind_data(wind_data_file)
-#print wind_angle, wind_speed,wind_dt
-#import matplotlib.pyplot as plt
-#plt.subplot(111,polar=True)
-#plt.hist(wind_angle);plt.show()
-#raw_input('Done?')
 
 def customaxis(ax, c_left='k', c_bottom='k', c_right='none', c_top='none',
                lw=1, size=12, pad=8):

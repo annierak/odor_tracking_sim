@@ -179,7 +179,7 @@ class BasicSwarmOfFlies(object):
         if self.track_plume_bouts:
             add_inds = scipy.logical_not(scipy.isnan(self.timesteps_since_plume_entry))
             self.timesteps_since_plume_entry[add_inds]+=1
-            print('timesteps_since_plume_entry:'+str(self.timesteps_since_plume_entry))
+            # print('timesteps_since_plume_entry:'+str(self.timesteps_since_plume_entry))
         # Update state for flies in traps
         self.update_for_in_trap(t, traps)
         # Update position based on mode and current velocities
@@ -367,6 +367,7 @@ class BasicSwarmOfFlies(object):
             xvels,yvels = self.x_velocity[mask_newly_trapped],self.y_velocity[mask_newly_trapped]
             if scipy.size(xvels)>0:
                 _,thetas = vfunc(xvels,yvels)
+                thetas = (thetas+scipy.pi)%(2*scipy.pi)
                 self.angle_in_trap[mask_newly_trapped] = thetas
 
             #Stop the flies trapped
@@ -404,9 +405,9 @@ class BasicSwarmOfFlies(object):
         mask_trap_num_set = self.trap_num != -1
         (trap_num_array,trap_counts)=scipy.unique(
         self.trap_num[mask_trap_num_set],return_counts = True)
-        trap_counts = scipy.zeros(self.num_traps)
-        trap_counts[trap_num_array] = trap_counts
-        return trap_counts
+        all_trap_counts = scipy.zeros(self.num_traps)
+        all_trap_counts[trap_num_array] = trap_counts
+        return all_trap_counts
 
     def update_positions(self,mask_release,mask_trapped,mask_startmode,dt):
         if self.start_type=='fh' or sum(mask_startmode)<1.:
@@ -464,7 +465,7 @@ class BasicSwarmOfFlies(object):
                 self.y_velocity[mask_redraw]=self.param['flight_speed'][0]*sines
                 #self.y_velocity[mask_redraw]=self.param['flight_speed'][0]*scipy.sin(directions)
                 #cp3 = time.time();print(cp3-cp2)
-                #and get assigned a new interval count until they change direction again
+                #and get assigned a fnew interval count until they change direction again
                 self.increments_until_turn[mask_redraw] = scipy.floor(#scipy.random.choice(self.increments_pool,sum(mask_redraw))
                     scipy.stats.lognorm.rvs(sigma,size=draws,scale=
                     (300/3.0)/dt*

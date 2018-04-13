@@ -79,7 +79,11 @@ def par_perp(u,v):
 
 def cartesian_to_polar(x,y):
     r = math.sqrt(x**2+y**2)
-    theta = math.atan(y/x)
+    if x>0:
+        theta = math.atan(y/x)
+    else:
+        theta = math.atan(y/x)+math.pi
+    theta = theta % (2*math.pi)
     return (r,theta)
 
 

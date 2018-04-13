@@ -275,12 +275,23 @@ wind_data_file = '2017_10_26_wind_vectors_1_min_pre_60_min_post_release.csv'
 # release_delay=0.,wind_dt=5,number_sources=6,schmitt_trigger=False,track_plume_bouts=True,
 # video_name='plume_bout_tracking_take_2')
 
-run_sim('angle_arrival_test',45.,10.,t_stop=1500.,
-swarm_size =3000,start_type='fh',wind_slippage=(0.,0.),kappa=0.,upper_prob=1.,
-display_speed=2.5,heading_data=None,wind_data_file=None,puffs=False,flies=True,
-release_delay=0.,wind_dt=5,number_sources=6,schmitt_trigger=False,track_plume_bouts=True,
-video_name='angle_arrival_test')
+# run_sim('angle_arrival_test',45.,10.,t_stop=2000.,
+# swarm_size =3000,start_type='fh',wind_slippage=(0.,0.),kappa=0.,upper_prob=1.,
+# display_speed=2.5,heading_data=None,wind_data_file=None,puffs=False,flies=True,
+# release_delay=0.,wind_dt=5,number_sources=6,schmitt_trigger=True,track_plume_bouts=True,
+# video_name='angle_arrival_test')
 
+# run_sim('angle_arrival_puffs',45.,10.,t_stop=2000.,
+# swarm_size =1000,start_type='fh',wind_slippage=(0.,0.),kappa=0.,upper_prob=1.,
+# display_speed=2.5,heading_data=None,wind_data_file=wind_data_file,puffs=True,flies=True,
+# release_delay=20.,wind_dt=5,number_sources=6,schmitt_trigger=False,track_plume_bouts=True,
+# video_name='angle_arrival_puffs')
+
+run_sim('test_8_traps',60.,10.,t_stop=2000.,
+swarm_size =1000,start_type='fh',wind_slippage=(0.,0.),kappa=0.,upper_prob=1.,
+display_speed=2.5,heading_data=None,wind_data_file=None,puffs=False,flies=True,
+release_delay=0.,wind_dt=5,number_sources=8,schmitt_trigger=False,track_plume_bouts=True,
+video_name='test_8_traps')
 
 # run_sim('highe_prob',45.,10.,t_stop=2000.,
 # swarm_size =1000,start_type='fh',wind_slippage=(0.,0.),kappa=0.,upper_prob=0.025    ,

@@ -55,11 +55,13 @@ class BasicSwarmOfFlies(object):
 
 
     def __init__(self,wind_field,traps,param={},start_type='fh',
-    track_plume_bouts=False,track_arena_exits=False): #default start type is fixed heading
+    track_plume_bouts=False,track_arena_exits=False,long_casts = False): #default start type is fixed heading
         self.param = dict(self.DefaultParam)
         self.param.update(param)
         self.check_param()
         self.dt = self.param['dt']
+        self.dt_plot=self.param['dt_plot']
+        self.t_stop = self.param['t_stop']
         self.x_position = self.param['x_start_position']
         self.y_position = self.param['y_start_position']
         self.track_plume_bouts = track_plume_bouts
@@ -96,8 +98,15 @@ class BasicSwarmOfFlies(object):
         #(300/3.0)/0.25*
         #scipy.exp(0))
 
+        if long_casts:
+             self.param['cast_interval'] = [50,100]
         cast_interval = self.param['cast_interval']
+        print(cast_interval)
         self.dt_next_cast = scipy.random.uniform(cast_interval[0], cast_interval[1], (self.size,))
+        # plt.figure(11)
+        # plt.hist(self.dt_next_cast);plt.show()
+        # time.sleep(15)
+        plt.close()
         self.cast_sign = scipy.random.choice([-1,1],(self.size,))
 
         self.parallel_coeff,self.perp_coeff = self.param['wind_slippage']
@@ -328,6 +337,7 @@ class BasicSwarmOfFlies(object):
                 cast_interval[1],
                 (mask_change.sum(),)
                 )
+        print(self.dt_next_cast[mask_change])
         self.t_last_cast[mask_change] = t
         self.cast_sign[mask_change] = scipy.random.choice([-1,1],(mask_change.sum(),))
 
@@ -386,9 +396,13 @@ class BasicSwarmOfFlies(object):
             mask_trapped_in_num = mask_trapped & (self.trap_num == trap_num)
             return self.t_in_trap[mask_trapped_in_num]
 
-    def get_angle_trapped(self,trap_num):
+    def get_angle_trapped(self,trap_num,time_window):
         mask_trapped = self.mode == self.Mode_Trapped
         mask_trapped_in_num = mask_trapped & (self.trap_num == trap_num)
+        if not(time_window==[]):
+        #This case returns angle trapped of those trapped in a given time window
+            time_bool = (self.t_in_trap>=time_window[0]) & (self.t_in_trap<=time_window[1])
+            mask_trapped_in_num = mask_trapped_in_num & time_bool
         return self.angle_in_trap[mask_trapped_in_num]
 
 

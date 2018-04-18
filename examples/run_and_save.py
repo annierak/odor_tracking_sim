@@ -24,7 +24,7 @@ wind_slippage = (0.,0.),swarm_size=10000,start_type='fh',upper_prob=0.002,
 heading_data=None,wind_data_file=None,dt=0.25,wind=True,flies=True,puffs=False,
 plot_scale = 2.0,release_delay=0.,wind_dt=None,video_name=None,wind_speed=0.5,
 puff_horizontal_diffusion=1.,upper_threshold=0.02,schmitt_trigger=True,number_sources=6,
-heading_mean=None,track_plume_bouts=False):
+heading_mean=None,track_plume_bouts=False,long_casts = False):
     if puffs:
         lower_prob = 0.05
         upper_prob = 0.05
@@ -55,9 +55,12 @@ heading_mean=None,track_plume_bouts=False):
     '''Get swarm ready'''
     if flies:
         swarm = srt.setup_swarm(swarm_size,wind_field,traps,
-            release_time_constant, kappa, start_type, upper_prob,release_delay=release_delay,
-            heading_data=heading_data,wind_slippage=wind_slippage,upper_threshold=upper_threshold,
-            schmitt_trigger=schmitt_trigger,heading_mean=heading_mean,track_plume_bouts=track_plume_bouts)
+            release_time_constant, kappa, start_type, upper_prob,t_stop,
+            release_delay=release_delay, heading_data=heading_data,
+            wind_slippage=wind_slippage,upper_threshold=upper_threshold,
+            schmitt_trigger=schmitt_trigger,heading_mean=heading_mean,
+            track_plume_bouts=track_plume_bouts,long_casts = long_casts,
+            dt_plot=display_speed)
     else:
         swarm=None
 
@@ -92,6 +95,8 @@ heading_mean=None,track_plume_bouts=False):
                 swarm.update(t,dt,wind_field,odor_field,traps,plumes=plumes)
             except(IndexError):
                 print('Out of wind data')
+                with open(output_file, 'w') as f:
+                    pickle.dump((swarm,wind_field),f)
                 sys.exit()
         #Update the plumes
         if plumes is not None:
@@ -179,9 +184,12 @@ heading_mean=None,track_plume_bouts=False):
     # Write swarm to file
     if video_name is not None:
         writer.finish()
-    with open(output_file, 'w') as f:
+        video_info = {'fps':fps}
+        with open(output_file, 'w') as f:
+            pickle.dump((swarm,wind_field,video_info),f)
+        print('here')
+    else:
         pickle.dump((swarm,wind_field),f)
-
     plt.clf()
 
 heading_data = {'angles':(scipy.pi/180)*scipy.array([0.,90.,180.,270.]),
@@ -281,17 +289,29 @@ wind_data_file = '2017_10_26_wind_vectors_1_min_pre_60_min_post_release.csv'
 # release_delay=0.,wind_dt=5,number_sources=6,schmitt_trigger=True,track_plume_bouts=True,
 # video_name='angle_arrival_test')
 
-# run_sim('angle_arrival_puffs',45.,10.,t_stop=2000.,
+# run_sim('angle_arrival_puffs',45.,10.,t_stop=7800.,
 # swarm_size =1000,start_type='fh',wind_slippage=(0.,0.),kappa=0.,upper_prob=1.,
 # display_speed=2.5,heading_data=None,wind_data_file=wind_data_file,puffs=True,flies=True,
 # release_delay=20.,wind_dt=5,number_sources=6,schmitt_trigger=False,track_plume_bouts=True,
 # video_name='angle_arrival_puffs')
 
-run_sim('test_8_traps',6000.,10.,t_stop=2000.,
+# run_sim('angle_arrival_puffs_longer_cast',45.,10.,t_stop=7800.,
+# swarm_size =1000,start_type='fh',wind_slippage=(0.,0.),kappa=0.,upper_prob=1.,
+# display_speed=2.5,heading_data=None,wind_data_file=wind_data_file,puffs=True,flies=True,
+# release_delay=20.,wind_dt=5,number_sources=6,schmitt_trigger=False,track_plume_bouts=True,
+# video_name='angle_arrival_puffs_longer_cast',long_casts=True)
+
+run_sim('evolving_hist_test',45.,10.,t_stop=2000.,
 swarm_size =1000,start_type='fh',wind_slippage=(0.,0.),kappa=0.,upper_prob=1.,
 display_speed=2.5,heading_data=None,wind_data_file=None,puffs=False,flies=True,
-release_delay=0.,wind_dt=5,number_sources=8,schmitt_trigger=False,track_plume_bouts=True,
-video_name='test_8_traps')
+release_delay=0.,wind_dt=5,number_sources=6,schmitt_trigger=False,track_plume_bouts=True,
+video_name='evolving_hist_test',long_casts=True)
+
+# run_sim('test_8_traps',60.,10.,t_stop=2000.,
+# swarm_size =1000,start_type='fh',wind_slippage=(0.,0.),kappa=0.,upper_prob=1.,
+# display_speed=2.5,heading_data=None,wind_data_file=None,puffs=False,flies=True,
+# release_delay=0.,wind_dt=5,number_sources=8,schmitt_trigger=False,track_plume_bouts=True,
+# video_name='test_8_traps')
 
 # run_sim('highe_prob',45.,10.,t_stop=2000.,
 # swarm_size =1000,start_type='fh',wind_slippage=(0.,0.),kappa=0.,upper_prob=0.025    ,

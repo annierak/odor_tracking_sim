@@ -111,8 +111,9 @@ def setup_odor_field(wind_field,traps,plot_scale,puff_mol_amount=None,
                                         puff_init_rad=1.,puff_spread_rate=0.05)
     #Concentration generator object
         grid_size = 1000
-        odor_field = puff_models.ConcentrationArrayGenerator(sim_region, 0.1, grid_size,
-                                                           grid_size, puff_mol_amount,kernel_rad_mult=5)
+        odor_field = puff_models.ConcentrationArrayGenerator(
+        sim_region, 0.1, grid_size, grid_size, puff_mol_amount,
+        kernel_rad_mult=5)
     #Pompy version---------------------------
         odor_plot_param = {
             'xlim' : xlim,
@@ -120,9 +121,10 @@ def setup_odor_field(wind_field,traps,plot_scale,puff_mol_amount=None,
             'cmap' : plt.cm.YlGnBu}
     return odor_plot_param,odor_field,plumes
 
-def setup_swarm(swarm_size,wind_field,traps,beta,kappa,start_type, upper_prob,release_delay=0.,
-    heading_data = None, wind_slippage = (0.,0.),upper_threshold=0.02,schmitt_trigger=True,
-    heading_mean=None,track_plume_bouts=False):
+def setup_swarm(swarm_size,wind_field,traps,beta,kappa,start_type,
+    upper_prob,t_stop,release_delay=0.,heading_data = None, wind_slippage = (0.,0.),
+    upper_threshold=0.02,schmitt_trigger=True, heading_mean=None,
+    track_plume_bouts=False,long_casts = False,dt_plot=2.5):
     if wind_field.evolving:
         wind_angle_0 = wind_field.angle[0]
     else:
@@ -159,12 +161,14 @@ def setup_swarm(swarm_size,wind_field,traps,beta,kappa,start_type, upper_prob,re
                 'lower': 0.9,    # detection probability/sec of exposure
                 'upper': upper_prob,  # detection probability/sec of exposure
                 },
-            'schmitt_trigger':schmitt_trigger
+            'schmitt_trigger':schmitt_trigger,
+            'dt_plot': dt_plot,
+            't_stop':t_stop
             }
     # print(swarm_param['initial_heading_dist'])
     # print(swarm_param['initial_heading_dist'].mean())
     swarm = swarm_models.BasicSwarmOfFlies(wind_field,traps,param=swarm_param,
-    start_type=start_type,track_plume_bouts=track_plume_bouts)
+    start_type=start_type,track_plume_bouts=track_plume_bouts,long_casts = long_casts)
     # time.sleep(10)
     return swarm
 
@@ -195,7 +199,6 @@ def initial_plot(odor_field,plot_param,flies,release_delay,swarm=None,fignum=1,p
 
     #Initial fly plots
     plt.ion()
-    print(fignum)
     fig = plt.figure(fignum)
     plot_dict.update({'fig':fig})
     ax = plt.subplot(111)

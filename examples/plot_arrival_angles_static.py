@@ -30,7 +30,7 @@ for i in trap_num_list:
     ax = trap_axes[i]
     ax.set_yticks([])
     ax.set_title('trap:{0}'.format(i))
-    arrival_angles = swarm.get_angle_trapped(i)
+    arrival_angles = swarm.get_angle_trapped(i,[])
     if len(arrival_angles)>0:
         (n, bins, patches) = ax.hist(arrival_angles,num_bins,range=(0,2*scipy.pi))
         # peak_counts[i]=max(n)

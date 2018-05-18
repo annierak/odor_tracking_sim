@@ -67,16 +67,12 @@ trap_radius = 5.):
     return traps
 
 def setup_odor_field(wind_field,traps,plot_scale,puff_mol_amount=None,
-    puffs=False,horizontal_diffusion=1.5):
+    puffs=False,xlim=None,ylim=None):
     if traps.num_traps>1:
         #Standard geometry: 6 traps around the center
         plot_size = plot_scale*traps.param['source_radius']
         xlim = (-plot_size, plot_size)
         ylim = (-plot_size, plot_size)
-    else:
-        #Toy example with just one trap
-        xlim = (-0.25*traps.param['source_radius'],0.25*traps.param['source_radius'])
-        ylim = (-0.1*traps.param['source_radius'],0.75*traps.param['source_radius'])
 
     if not(puffs):
         '''This is Will's odor implementation'''
@@ -105,10 +101,15 @@ def setup_odor_field(wind_field,traps,plot_scale,puff_mol_amount=None,
         #source_pos = traps.param['source_locations'][4]
         source_pos = scipy.array([scipy.array(tup) for tup in traps.param['source_locations']]).T
         '''*****************'''
+        # plumes = puff_models.PlumeModel(sim_region, source_pos, wind_field,
+        #                                 puff_release_rate=1.,model_z_disp=False,
+        #                                 centre_rel_diff_scale=1.5,
+        #                                 puff_init_rad=1.,puff_spread_rate=0.05)
         plumes = puff_models.PlumeModel(sim_region, source_pos, wind_field,
-                                        puff_release_rate=1.,model_z_disp=False,
-                                        centre_rel_diff_scale=horizontal_diffusion,
-                                        puff_init_rad=1.,puff_spread_rate=0.05)
+                                        puff_release_rate=50.,model_z_disp=False,
+                                        centre_rel_diff_scale=1.5,
+                                        puff_init_rad=0.001,puff_spread_rate=0.05)
+
     #Concentration generator object
         grid_size = 1000
         odor_field = puff_models.ConcentrationArrayGenerator(
@@ -118,7 +119,7 @@ def setup_odor_field(wind_field,traps,plot_scale,puff_mol_amount=None,
         odor_plot_param = {
             'xlim' : xlim,
             'ylim' : ylim,
-            'cmap' : plt.cm.YlGnBu}
+            'cmap' : 'Purples'}
     return odor_plot_param,odor_field,plumes
 
 def setup_swarm(swarm_size,wind_field,traps,beta,kappa,start_type,
@@ -162,6 +163,7 @@ def setup_swarm(swarm_size,wind_field,traps,beta,kappa,start_type,
                 'upper': upper_prob,  # detection probability/sec of exposure
                 },
             'schmitt_trigger':schmitt_trigger,
+            'reset_distribution': scipy.stats.uniform(0,2*scipy.pi),
             'dt_plot': dt_plot,
             't_stop':t_stop
             }
@@ -172,7 +174,7 @@ def setup_swarm(swarm_size,wind_field,traps,beta,kappa,start_type,
     # time.sleep(10)
     return swarm
 
-def initial_plot(odor_field,plot_param,flies,release_delay,swarm=None,fignum=1,plumes=None):
+def initial_plot(odor_field,wind_field,plot_param,flies,release_delay,swarm=None,fignum=1,plumes=None):
     #Initial odor plots
     plot_dict = {}
     if isinstance(odor_field,odor_models.FakeDiffusionOdorField):
@@ -199,9 +201,10 @@ def initial_plot(odor_field,plot_param,flies,release_delay,swarm=None,fignum=1,p
 
     #Initial fly plots
     plt.ion()
-    fig = plt.figure(fignum)
+    fig = plt.figure(fignum,dpi=500)
     plot_dict.update({'fig':fig})
     ax = plt.subplot(111)
+    plot_dict.update({'ax':ax})
 
 
     #Put the time in the corner
@@ -212,9 +215,22 @@ def initial_plot(odor_field,plot_param,flies,release_delay,swarm=None,fignum=1,p
 
     plt.figure(fignum)
     plot_dict.update({'fignum':fignum})
+
     if flies:
         fly_colors = [color_dict[mode] for mode in swarm.mode]
         fly_dots = plt.scatter(swarm.x_position, swarm.y_position,color=fly_colors,alpha=0.5)
         plot_dict.update({'fly_dots':fly_dots})
+
+    #put an arrow with the wind direction at the top-ish
+    arrow_magn = (xmax-xmin)/20
+    x_wind,y_wind = wind_field.value(0,0,0)
+    wind_arrow = matplotlib.patches.FancyArrowPatch(posA=(
+    xmin+(xmax-xmin)/2,ymax-0.2*(ymax-ymin)),posB=
+    (xmin+(xmax-xmin)/2+arrow_magn*x_wind,
+    ymax-0.2*(ymax-ymin)+arrow_magn*y_wind),
+    color='green',mutation_scale=10,arrowstyle='-|>')
+    plt.gca().add_patch(wind_arrow)
+    plot_dict.update({'wind_arrow':wind_arrow})
+
 
     return plot_dict

@@ -6,21 +6,33 @@ import sys
 import odor_tracking_sim.utility as utility
 import time
 import numpy as np
+import matplotlib.animation as animate
+
 
 f = sys.argv[1]
 input_file = f+'.pkl'
 
-with open(input_file,'r') as f:
-    (swarm,wind_field,video_info) = pickle.load(f)
+with open(input_file,'r') as File:
+    (swarm,wind_field,video_info) = pickle.load(File)
 
 trap_num_list = swarm.list_all_traps()
+release_delay = swarm.param['release_delay']
+original_fps = video_info['fps']
+dt_plot = swarm.dt_plot
+hist_dt_plot = 15.
+t_stop = swarm.t_stop
+window_length = 60.
+hist_fps = int((original_fps*dt_plot)/hist_dt_plot)
 
 plt.ion()
 fig = plt.figure(1)
 
+FFMpegWriter = animate.writers['ffmpeg']
+writer = FFMpegWriter(fps=hist_fps)
+writer.setup(fig, f+'--hist_video.mp4', 500)
 
 #Put the time in the middle
-text = '0 min 0 sec'
+text = '-'+str(int(release_delay))+' min 0 sec'
 timer= plt.figtext(0.5,0.5,text,color='r',horizontalalignment='center')
 
 ax1 = plt.subplot2grid((3,4),(1,3),polar=True)
@@ -51,10 +63,7 @@ for trap in trap_num_list:
     ax.set_xlabel('Arrival angle')
     ax.set_ylim(0,1)
     '''Now travel through time and update the histogram'''
-    dt_plot = swarm.dt_plot
-    hist_dt_plot = 15.
-    t_stop = swarm.t_stop
-    window_length = 60.
+
 
 plt.draw()
 
@@ -75,24 +84,27 @@ while t<t_stop:
             bar.set_height(counts[index])
         if len(arrival_angles)>0:
             peak_counts[trap]=max(counts)
-            # print(counts)
-            # print('some arrivals')
-            time.sleep(0.01)
         else:
             peak_counts[trap]=1
     top = max(peak_counts)
     for i,num in enumerate(trap_num_list):
         ax = trap_axes[num]
         ax.set_ylim(0,top)
+    if t<release_delay*60.:
+        text ='-{0} min {1} sec'.format(int(scipy.floor(abs(t/60.-release_delay))),int(scipy.floor(abs(t-release_delay*60)%60.)))
+    else:
+        text ='{0} min {1} sec'.format(int(scipy.floor(t/60.-release_delay)),int(scipy.floor(t%60.)))
+    timer.set_text(text)
     plt.draw()
     plt.pause(0.001)
+    writer.grab_frame()
     t+=hist_dt_plot
 
 
 
 
 
-
+writer.finish()
 
 
 plt.show()

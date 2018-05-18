@@ -50,7 +50,7 @@ heading_mean=None,track_plume_bouts=False,long_casts = False):
 
 
     odor_plot_param,odor_field,plumes = srt.setup_odor_field(wind_field,traps,
-    plot_scale,puff_mol_amount=puff_mol_amount,puffs=puffs,horizontal_diffusion=puff_horizontal_diffusion)
+    plot_scale,puff_mol_amount=puff_mol_amount,puffs=puffs)
 
     '''Get swarm ready'''
     if flies:
@@ -247,6 +247,12 @@ wind_data_file = '2017_10_26_wind_vectors_1_min_pre_60_min_post_release.csv'
 # release_delay=0.,wind_dt=5,number_sources=6,schmitt_trigger=False,
 # video_name='color_changing_1')
 
+run_sim('color_changing_10',45.,10.,t_stop=500.,
+swarm_size =1000,start_type='fh',wind_slippage=(0.,0.),kappa=2.,upper_prob=1.,
+display_speed=1.25,heading_data=None,wind_data_file=None,puffs=False,flies=True,
+release_delay=0.,wind_dt=5,number_sources=6,schmitt_trigger=False,
+video_name='color_changing_1')
+
 # run_sim('color_changing_wind_data_longer',45.,10.,t_stop=8000.,
 # swarm_size =1000,start_type='fh',wind_slippage=(0.,0.),kappa=2.,upper_prob=1.,
 # display_speed=2.5,heading_data=heading_data,wind_data_file=wind_data_file,puffs=True,flies=True,
@@ -301,11 +307,25 @@ wind_data_file = '2017_10_26_wind_vectors_1_min_pre_60_min_post_release.csv'
 # release_delay=20.,wind_dt=5,number_sources=6,schmitt_trigger=False,track_plume_bouts=True,
 # video_name='angle_arrival_puffs_longer_cast',long_casts=True)
 
-run_sim('evolving_hist_test',45.,10.,t_stop=2000.,
-swarm_size =1000,start_type='fh',wind_slippage=(0.,0.),kappa=0.,upper_prob=1.,
-display_speed=2.5,heading_data=None,wind_data_file=None,puffs=False,flies=True,
-release_delay=0.,wind_dt=5,number_sources=6,schmitt_trigger=False,track_plume_bouts=True,
-video_name='evolving_hist_test',long_casts=True)
+# run_sim('evolving_hist_test',45.,10.,t_stop=4000.,
+# swarm_size =1000,start_type='fh',wind_slippage=(0.,0.),kappa=0.,upper_prob=1.,
+# display_speed=2.5,heading_data=None,wind_data_file=None,puffs=False,flies=True,
+# release_delay=0.,wind_dt=5,number_sources=6,schmitt_trigger=False,track_plume_bouts=True,
+# video_name='evolving_hist_test',long_casts=True)
+
+# run_sim('casting_timeout_test',45.,10.,t_stop=4000.,
+# swarm_size =1000,start_type='fh',wind_slippage=(0.,0.),kappa=0.,upper_prob=1.,
+# display_speed=2.5,heading_data=None,wind_data_file=None,puffs=False,flies=True,
+# release_delay=0.,wind_dt=5,number_sources=6,schmitt_trigger=False,track_plume_bouts=True,
+# video_name='casting_timeout_test',long_casts=False)
+
+# run_sim('casting_timeout_puffs',45.,10.,t_stop=4000.,
+# swarm_size =1000,start_type='fh',wind_slippage=(0.,0.),kappa=0.,upper_prob=1.,
+# display_speed=2.5,heading_data=None,wind_data_file=wind_data_file,puffs=True,flies=True,
+# release_delay=20.,wind_dt=5,number_sources=6,schmitt_trigger=False,track_plume_bouts=True,
+# video_name='casting_timeout_puffs',long_casts=False)
+
+
 
 # run_sim('test_8_traps',60.,10.,t_stop=2000.,
 # swarm_size =1000,start_type='fh',wind_slippage=(0.,0.),kappa=0.,upper_prob=1.,

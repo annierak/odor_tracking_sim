@@ -543,11 +543,13 @@ class ConcentrationArrayGenerator(object):
         plt.figure(fignums[0])
 
         vmin = 0.0
-        vmax= 20.*(self.puff_mol_amount/1000.) #empirically observed scaling lol
+        # vmax = 5e4 #value used by Graham
+        vmax = 100.
+        # vmax= 20.*(self.puff_mol_amount/1000.) #empirically observed scaling
+        #(for parameters used until 5/15) lol
     #    t = matplotlib.colors.LogNorm(vmin=vmin,vmax=vmax)
-
         #conc_array=conc_array/conc_array.max()
-        image=plt.imshow(scipy.log(conc_array), extent=(xlim[0],xlim[1],ylim[0],ylim[1]),cmap=cmap,vmin=vmin,vmax=vmax)
+        image=plt.imshow(conc_array, extent=(xlim[0],xlim[1],ylim[0],ylim[1]),cmap=cmap,vmin=vmin,vmax=vmax)
 #            #plt.plot([x],[y],'ok')
 #            s = scipy.linspace(0,2.0*scipy.pi,100)
 #            cx = x + self.param['trap_radius']*scipy.cos(s)

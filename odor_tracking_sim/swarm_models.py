@@ -45,7 +45,8 @@ class BasicSwarmOfFlies(object):
                 'lower': 0.9,    # detection probability/sec of exposure
                 'upper': 0.002,  # detection probability/sec of exposure
                 },
-            'schmitt_trigger' : True
+            'schmitt_trigger' : True,
+            'reset_distribution': scipy.stats.uniform(0,2*scipy.pi),
             }
 
     Mode_StartMode = 0
@@ -79,6 +80,12 @@ class BasicSwarmOfFlies(object):
         self.mode = scipy.full((self.size,), self.Mode_StartMode, dtype=int)
         self.surging_error = scipy.zeros((self.size,))
         self.t_last_cast = scipy.zeros((self.size,))
+        #Parameters relating to cast timeout.
+        self.time_began_casting = scipy.full(self.size,scipy.inf)
+        self.reset_distribution = self.param['reset_distribution']
+        self.reset_pool = self.reset_distribution.rvs(2000)
+        self.cast_timeout = 20
+        self.reset_pool_counter = 0
         #for the case of the low pass filter, a vector that tracks time
         #since plume update_for_odor_loss
         if not(self.param['schmitt_trigger']):
@@ -101,7 +108,6 @@ class BasicSwarmOfFlies(object):
         if long_casts:
              self.param['cast_interval'] = [50,100]
         cast_interval = self.param['cast_interval']
-        print(cast_interval)
         self.dt_next_cast = scipy.random.uniform(cast_interval[0], cast_interval[1], (self.size,))
         # plt.figure(11)
         # plt.hist(self.dt_next_cast);plt.show()
@@ -147,6 +153,8 @@ class BasicSwarmOfFlies(object):
         """
         Update fly swarm one time step.
         """
+
+
         last = time.time()
         if plumes is not None:
             puff_array = plumes.puff_array
@@ -167,22 +175,30 @@ class BasicSwarmOfFlies(object):
         else:
             odor= odor_field.calc_conc_list(puff_array, self.x_position,self.y_position, z=0)
         x_wind, y_wind = wind_field.value(t,self.x_position, self.y_position)
+        print(x_wind[0],y_wind[0])
         x_wind_unit, y_wind_unit = unit_vector(x_wind, y_wind)
         wind_uvecs = {'x': x_wind_unit,'y': y_wind_unit}
         print('time obtaining odor and wind info: '+str(time.time()-last))
         last = time.time()
         if not(self.start_type=='cvrw' or self.start_type=='rw'):
             #The random walk mode excludes odor detection
+
+            masks = {'startmode': mask_startmode, 'flyupwd': mask_flyupwd,
+            'castfor': mask_castfor}
+            #Before anything else, adjust the velocities of flies already in
+            #cast or surge mode based on the new wind direction this time step
+            self.update_for_changing_wind(masks,wind_uvecs)
+
             # Update state for flies detectoring odor plumes
-            masks = {'startmode': mask_startmode, 'castfor': mask_castfor}
             self.update_for_odor_detection(dt, odor, wind_uvecs, masks)
             print('time updating for odor detection: '+str(time.time()-last))
             last = time.time()
             # Update state for files losing odor plume or already casting.
-            masks = {'flyupwd': mask_flyupwd, 'castfor': mask_castfor}
             self.update_for_odor_loss(t, dt, odor, wind_uvecs, masks)
             print('time updating for odor loss: '+str(time.time()-last))
             last = time.time()
+            #Update state for flies giving up on casting.
+            self.reset_pool_counter=self.update_for_reset(t,masks,self.reset_pool_counter)
         # At this point, add one timestep to all entries of
         # timesteps_since_plume_entry that are not nan
         if self.track_plume_bouts:
@@ -219,6 +235,43 @@ class BasicSwarmOfFlies(object):
         c2 = self.perp_coeff
         self.x_position[mask_startmode] += dt*(c1*self.par_wind[0,mask_startmode]+c2*self.perp_wind[0,mask_startmode])
         self.y_position[mask_startmode] += dt*(c1*self.par_wind[1,mask_startmode]+c2*self.perp_wind[1,mask_startmode])
+
+
+    def update_for_changing_wind(self,masks,wind_uvecs):
+        x_wind_unit = wind_uvecs['x']
+        y_wind_unit = wind_uvecs['y']
+        mask_flyupwd = masks['flyupwd']
+        mask_castfor = masks['castfor']
+        mask_change = (mask_flyupwd) | (mask_castfor)
+
+        #Select new heading errors for the casting and surging flies
+        surging_error_std = self.param['surging_error_std']
+        distf = self.param['surging_error_dist'] #this variable is a pdf
+        self.surging_error[mask_change] = surging_error_std*distf.rvs(size=mask_change.sum())
+
+        # Set x and y velocities for the surging flies according to current wind
+        x_unit_change, y_unit_change = rotate_vecs(
+                x_wind_unit[mask_flyupwd],
+                y_wind_unit[mask_flyupwd],
+                self.surging_error[mask_flyupwd]
+                )
+        speed = self.param['flight_speed'][mask_flyupwd]
+        self.x_velocity[mask_flyupwd] = -speed*x_unit_change
+        self.y_velocity[mask_flyupwd] = -speed*y_unit_change
+
+        # Set x and y velocities for the casting flies according to current wind,
+        #keeping in mind their pre-determined cast signs (left/right)
+
+        x_unit_change, y_unit_change = rotate_vecs(
+                y_wind_unit[mask_castfor],
+               -x_wind_unit[mask_castfor],
+                self.surging_error[mask_castfor]
+                )
+        speed = self.param['flight_speed'][mask_castfor]
+        self.x_velocity[mask_castfor] = self.cast_sign[mask_castfor]*speed*x_unit_change
+        self.y_velocity[mask_castfor] = self.cast_sign[mask_castfor]*speed*y_unit_change
+
+
 
 
     def update_for_odor_detection(self, dt, odor, wind_uvecs, masks):
@@ -306,8 +359,11 @@ class BasicSwarmOfFlies(object):
             #If the fly's counter is at 2, assign to casting mode, and reset counter to 0
             mask_change = mask_candidates & (self.surging_plumeless_count==2)
             self.surging_plumeless_count[mask_change] =0
+
         #In both cases set mask_change to cast for odor mode
         self.mode[mask_change] = self.Mode_CastForOdor
+        #Grab the time these flies starting casting.
+        self.time_began_casting[mask_change] = t
         #Then drop these flies' plume bout durations into plume_bout_lengths
         if self.track_plume_bouts & sum(mask_change)>0:
             #(a) grab the saved index j of the first empty row in plume_bout_lengths
@@ -337,7 +393,6 @@ class BasicSwarmOfFlies(object):
                 cast_interval[1],
                 (mask_change.sum(),)
                 )
-        print(self.dt_next_cast[mask_change])
         self.t_last_cast[mask_change] = t
         self.cast_sign[mask_change] = scipy.random.choice([-1,1],(mask_change.sum(),))
 
@@ -351,6 +406,24 @@ class BasicSwarmOfFlies(object):
         speed = self.param['flight_speed'][mask_change]
         self.x_velocity[mask_change] = self.cast_sign[mask_change]*speed*x_unit_change
         self.y_velocity[mask_change] = self.cast_sign[mask_change]*speed*y_unit_change
+
+    def update_for_reset(self,t,masks,reset_pool_counter):
+        '''This is for the flies who give up on casting'''
+        mask_castfor = masks['castfor']
+        reset_mask = mask_castfor & ((t-self.time_began_casting)> self.cast_timeout)
+        self.mode[reset_mask] = self.Mode_StartMode
+        for index in range(len(reset_mask)):
+            if reset_mask[index]:
+                try:
+                    angle = self.reset_pool[reset_pool_counter]
+                except(IndexError):
+                    self.reset_pool = scipy.append(
+                            self.reset_pool,self.reset_distribution.rvs(2000))
+                    angle = self.reset_pool[reset_pool_counter]
+                self.x_velocity[index] = self.param['flight_speed'][0]*scipy.cos(angle)
+                self.y_velocity[index] = self.param['flight_speed'][0]*scipy.sin(angle)
+                reset_pool_counter +=1
+        return reset_pool_counter
 
 
     def update_for_in_trap(self, t, traps): #******

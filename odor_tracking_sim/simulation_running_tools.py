@@ -1,14 +1,12 @@
-
-
 import time
 import scipy
 import matplotlib.pyplot as plt
 import matplotlib.animation as animate
 import matplotlib
-matplotlib.use("Agg")
+# matplotlib.use("Agg")
 import cPickle as pickle
 import sys
-
+import itertools
 
 import odor_tracking_sim.wind_models as wind_models
 import odor_tracking_sim.odor_models as odor_models
@@ -16,8 +14,12 @@ import odor_tracking_sim.swarm_models as swarm_models
 import odor_tracking_sim.trap_models as trap_models
 import odor_tracking_sim.utility as utility
 import odor_tracking_sim.borrowed_puff_models as puff_models
+import odor_tracking_sim.borrowed_wind_models as pompy_wind_models
 
-def setup_wind_field(wind_angle,wind_data_file,dt,release_delay,wind_dt=None,wind_speed=0.5):
+
+
+def setup_wind_field(wind_angle,wind_data_file,dt,release_delay,traps,plot_scale,
+    wind_dt=None,wind_speed=0.5,pompy_wind_model=False,xlim=None,ylim=None):
     if not(wind_data_file==None):
         wind_dct = utility.process_wind_data(wind_data_file,release_delay,wind_dt=wind_dt)
         wind_param = {
@@ -36,7 +38,23 @@ def setup_wind_field(wind_angle,wind_data_file,dt,release_delay,wind_dt=None,win
             'wind_dt': None,
             'dt': dt
             }
-    wind_field = wind_models.WindField(param=wind_param)
+    if pompy_wind_model:
+        if traps.num_traps>1:
+            #Standard geometry: 6 traps around the center
+            plot_size = plot_scale*traps.param['source_radius']
+            xlim = (-plot_size, plot_size)
+            ylim = (-plot_size, plot_size)
+        aspect_ratio= (xlim[1]-xlim[0])/(ylim[1]-ylim[0])
+        wind_region = puff_models.Rectangle(xlim[0]*1.2,ylim[0]*1.2,
+        xlim[1]*1.2,ylim[1]*1.2)
+        wind_speed = scipy.array(wind_dct['wind_speed'])
+        wind_angle = scipy.array(wind_dct['wind_angle'])
+        wind_vel_x_av = wind_speed*scipy.cos(wind_angle)
+        wind_vel_y_av = wind_speed*scipy.sin(wind_angle)
+        wind_field = pompy_wind_models.WindModel(wind_region,
+        int(15*aspect_ratio),15, wind_vel_x_av, wind_vel_y_av)
+    else:
+        wind_field = wind_models.WindField(param=wind_param)
     return wind_field
 
 def setup_traps(number_sources = 6,radius_sources = 1000.0,strength_sources = 10.0,
@@ -106,9 +124,9 @@ def setup_odor_field(wind_field,traps,plot_scale,puff_mol_amount=None,
         #                                 centre_rel_diff_scale=1.5,
         #                                 puff_init_rad=1.,puff_spread_rate=0.05)
         plumes = puff_models.PlumeModel(sim_region, source_pos, wind_field,
-                                        puff_release_rate=50.,model_z_disp=False,
+                                        puff_release_rate=20.,model_z_disp=False,
                                         centre_rel_diff_scale=1.5,
-                                        puff_init_rad=0.001,puff_spread_rate=0.05)
+                                        puff_init_rad=0.001,puff_spread_rate=0.02)
 
     #Concentration generator object
         grid_size = 1000
@@ -124,7 +142,7 @@ def setup_odor_field(wind_field,traps,plot_scale,puff_mol_amount=None,
 
 def setup_swarm(swarm_size,wind_field,traps,beta,kappa,start_type,
     upper_prob,t_stop,release_delay=0.,heading_data = None, wind_slippage = (0.,0.),
-    upper_threshold=0.02,schmitt_trigger=True, heading_mean=None,
+    upper_threshold=0.002,schmitt_trigger=True, heading_mean=None,
     track_plume_bouts=False,long_casts = False,dt_plot=2.5):
     if wind_field.evolving:
         wind_angle_0 = wind_field.angle[0]
@@ -174,12 +192,21 @@ def setup_swarm(swarm_size,wind_field,traps,beta,kappa,start_type,
     # time.sleep(10)
     return swarm
 
-def initial_plot(odor_field,wind_field,plot_param,flies,release_delay,swarm=None,fignum=1,plumes=None):
+def initial_plot(odor_field,wind_field,plot_param,flies,release_delay,swarm=None,
+pompy_wind_model=False,fignum=1,plumes=None,pre_stored=True):
     #Initial odor plots
     plot_dict = {}
+    if not(pre_stored):
+        plt.ion()
+    fig = plt.figure(fignum,dpi=500)
+    plot_dict.update({'fig':fig})
+    ax = plt.subplot(111)
+    plot_dict.update({'ax':ax})
     if isinstance(odor_field,odor_models.FakeDiffusionOdorField):
         #Will's version
         image = odor_field.plot(0.,plot_param=plot_param)
+    elif pre_stored:
+        image = odor_field.plot(ax,0)
     else:
         #Pompy version
         conc_array = (odor_field.generate_single_array(plumes.puff_array).T[::-1])
@@ -198,14 +225,6 @@ def initial_plot(odor_field,wind_field,plot_param,flies,release_delay,swarm=None
     Mode_Trapped :   'black'}
 
     plot_dict.update({'color_dict':color_dict})
-
-    #Initial fly plots
-    plt.ion()
-    fig = plt.figure(fignum,dpi=500)
-    plot_dict.update({'fig':fig})
-    ax = plt.subplot(111)
-    plot_dict.update({'ax':ax})
-
 
     #Put the time in the corner
     (xmin,xmax) = ax.get_xlim();(ymin,ymax) = ax.get_ylim()
@@ -232,5 +251,20 @@ def initial_plot(odor_field,wind_field,plot_param,flies,release_delay,swarm=None
     plt.gca().add_patch(wind_arrow)
     plot_dict.update({'wind_arrow':wind_arrow})
 
+    if pre_stored:
+        x_coords,y_coords = wind_field.get_plotting_points()
+        u,v = wind_field.quiver_at_time(0)
+        vector_field = ax.quiver(x_coords,y_coords,u,v)
+        plot_dict.update({'vector_field':vector_field})
+
+    elif pompy_wind_model:
+        #To make sure the pompy wind model is space-varying, plot the wind vector field
+        velocity_field = wind_field.velocity_field
+        u,v = velocity_field[:,:,0],velocity_field[:,:,1]
+        x_origins,y_origins = wind_field.x_points,wind_field.y_points
+        coords = scipy.array(list(itertools.product(x_origins, y_origins)))
+        x_coords,y_coords = coords[:,0],coords[:,1]
+        vector_field = ax.quiver(x_coords,y_coords,u,v)
+        plot_dict.update({'vector_field':vector_field})
 
     return plot_dict

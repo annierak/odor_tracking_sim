@@ -1,8 +1,11 @@
 import scipy
 import scipy.stats
+import scipy.interpolate as interpolate
 import math
 import pandas as pd
 import sys
+import numpy as np
+import matplotlib.pyplot as plt
 
 def rotate_vecs(x,y,angle):
     xrot = x*scipy.cos(angle) - y*scipy.sin(angle)
@@ -25,6 +28,23 @@ def rotation_matrix(angle):
         [scipy.sin(angle),  scipy.cos(angle)]
         ])
     return A
+
+def draw_from_inputted_distribution(data,dt,n_samples):
+    #function for using empirical release data to
+    #draw from the time-varying departure rate they exhibit
+    #Input: the empirical release data (a list of times)
+    #dt determines the bin size
+    #n_samples is the number of samples to return
+    t_max = max(data)
+    t_min = min(data)
+    bins = scipy.linspace(t_min,t_max,(t_max-t_min)/dt)
+    hist, bin_edges = scipy.histogram(data, bins=bins, density=True)
+    cum_values = np.zeros(bin_edges.shape)
+    cum_values[1:] = np.cumsum(hist*np.diff(bin_edges))
+    inv_cdf = interpolate.interp1d(cum_values, bin_edges)
+    r = np.random.rand(n_samples)
+    return inv_cdf(r)
+
 
 
 def create_circle_of_sources(number,radius,strength):
@@ -56,8 +76,8 @@ def unit_vector(x,y):
         mask = v_mag > 0
         x_unit = scipy.zeros(x.shape)
         y_unit = scipy.zeros(y.shape)
-        x_unit[mask] = x/v_mag
-        y_unit[mask] = y/v_mag
+        x_unit[mask] = x[mask]/v_mag[mask]
+        y_unit[mask] = y[mask]/v_mag[mask]
     else:
         if (v_mag > 0):
             x_unit = x/v_mag
@@ -73,7 +93,14 @@ def logistic(x,x0,k):
 
 def par_perp(u,v):
     #Returns the components of u parallel to and perpendicular to v, as cartesian vectors.
+    if (u[0],u[1]) == (0.,0.):
+        print('zero wind')
+        return 0,0
     par = (scipy.inner(u,v))/(scipy.inner(v,v))*v
+    if scipy.isnan(par[0]):
+        print(u,v)
+        raise ValueError('there is a par/perp Nan problem')
+        # sys.exit()
     perp = u - par
     return par,perp
 

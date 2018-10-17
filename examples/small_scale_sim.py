@@ -1,5 +1,3 @@
-
-
 import time
 import scipy
 import matplotlib.pyplot as plt
@@ -8,7 +6,7 @@ import matplotlib
 matplotlib.use("Agg")
 import cPickle as pickle
 import sys
-
+import itertools
 
 import odor_tracking_sim.wind_models as wind_models
 import odor_tracking_sim.odor_models as odor_models
@@ -19,25 +17,14 @@ import odor_tracking_sim.borrowed_puff_models as puff_models
 import odor_tracking_sim.simulation_running_tools as srt
 
 def run_small_sim(file_name,wind_angle,release_time_constant,
-t_stop=15000.0,display_speed=1, wind_slippage = (0.,0.),
+t_stop=15000.0,display_speed=1, wind_slippage = (0.,0.),flies=True,
 swarm_size=100,upper_prob=0.002,dt=0.25,wind_dt=None,pompy_wind_model=False,
 wind_speed=0.5,wind_data_file=None,video=True,release_delay=5.,
 upper_threshold=0.001,schmitt_trigger=False,track_plume_bouts=False,
 puff_horizontal_diffusion=1.,plot_scale = 2.0,puff_mol_amount=1.):
     output_file = file_name+'.pkl'
-    #Create wind field
-    if pompy_wind_model:
-    else:
-        wind_field=srt.setup_wind_field(wind_angle,
-        wind_data_file,dt,0.,wind_dt=wind_dt,wind_speed=wind_speed)
-    #--- Setup odor arena
-    xlim = (-15., 15.)
-    ylim = (0., 40.)
 
-    # xlim = (0., 200.)
-    # ylim = (0., 200.)
-
-
+    #traps
     trap_param = {
             'source_locations' : [(7.5,25.),],
             'source_strengths' : [1.,],
@@ -47,6 +34,14 @@ puff_horizontal_diffusion=1.,plot_scale = 2.0,puff_mol_amount=1.):
     }
 
     traps = trap_models.TrapModel(trap_param)
+
+    #--- Setup odor arena
+    xlim = (-15., 15.)
+    ylim = (0., 40.)
+    #Create wind field
+    wind_field=srt.setup_wind_field(wind_angle, wind_data_file,dt,0.,traps,
+    plot_scale,xlim=xlim,ylim=ylim,
+    wind_dt=wind_dt,wind_speed=wind_speed,pompy_wind_model=pompy_wind_model)
 
     odor_plot_param,odor_field,plumes = srt.setup_odor_field(wind_field,traps,
         plot_scale,puff_mol_amount=puff_mol_amount,puffs=True,
@@ -58,7 +53,7 @@ puff_horizontal_diffusion=1.,plot_scale = 2.0,puff_mol_amount=1.):
             'heading_data'        : None,
             'initial_heading_dist': scipy.radians(90.),
             'initial_heading'     : scipy.random.uniform(scipy.radians(80.),scipy.radians(100.),swarm_size),
-            'x_start_position'    : scipy.random.uniform(-2.5,7.5,swarm_size),
+            'x_start_position'    : scipy.random.uniform(0,5,swarm_size),
             'y_start_position'    : 5.*scipy.ones((swarm_size,)),
             'heading_error_std'   : scipy.radians(10.0),
             'flight_speed'        : scipy.full((swarm_size,), 0.5),
@@ -79,11 +74,13 @@ puff_horizontal_diffusion=1.,plot_scale = 2.0,puff_mol_amount=1.):
             'dt_plot': display_speed,
             't_stop':t_stop
             }
-
-    swarm = swarm_models.BasicSwarmOfFlies(wind_field,traps,param=swarm_param,
-        start_type='fh',track_plume_bouts=track_plume_bouts,track_arena_exits=True)
-    plot_dict = srt.initial_plot(odor_field,wind_field,odor_plot_param,True,0.,
-    swarm=swarm,fignum = 1,plumes=plumes)
+    if flies:
+        swarm = swarm_models.BasicSwarmOfFlies(wind_field,traps,param=swarm_param,
+            start_type='fh',track_plume_bouts=track_plume_bouts,track_arena_exits=True)
+    else:
+        swarm = None
+    plot_dict = srt.initial_plot(odor_field,wind_field,odor_plot_param,flies,0.,
+    swarm=swarm,fignum = 1,plumes=plumes,pompy_wind_model=pompy_wind_model)
     fig = plot_dict['fig']
     fig.set_size_inches(8,8,True)
     fig.canvas.flush_events()
@@ -105,9 +102,11 @@ puff_horizontal_diffusion=1.,plot_scale = 2.0,puff_mol_amount=1.):
     while t<t_stop:
         print('t: {0:1.2f}'.format(t))
         #update the swarm
-        swarm.update(t,dt,wind_field,odor_field,traps,xlim=xlim,ylim=ylim,
-        plumes=plumes)
-        plumes.update(t, dt)
+        if flies:
+            swarm.update(t,dt,wind_field,odor_field,traps,xlim=xlim,ylim=ylim,
+            plumes=plumes)
+        wind_field.update(t,dt)
+        plumes.update(t,dt)
         #Update time display
         timer = plot_dict['timer']
         text ='{0} min {1} sec'.format(int(scipy.floor(abs(t/60.))),int(scipy.floor(abs(t)%60.)))
@@ -122,30 +121,39 @@ puff_horizontal_diffusion=1.,plot_scale = 2.0,puff_mol_amount=1.):
             ax.set_ylim(ymin,ymax)
             '''plot the flies'''
             plt.figure(plot_dict['fignum'])
-            fly_dots = plot_dict['fly_dots']
-            fly_dots.set_offsets(scipy.c_[swarm.x_position,swarm.y_position])
 
-            color_dict = plot_dict['color_dict']
-            fly_colors = [color_dict[mode] for mode in swarm.mode]
-            fly_dots.set_color(fly_colors)
-
+            #This piece puts an arrow on the image giving the empirical wind direction
             wind_arrow = plot_dict['wind_arrow']
-
-            arrow_magn = (xmax-xmin)/20
-            x_wind,y_wind = wind_field.value(t,0,0)
+            arrow_magn = 4
+            x_wind,y_wind = wind_field._empirical_velocity
+            print(x_wind,y_wind)
             wind_arrow.set_positions((xmin+(xmax-xmin)/2,ymax-0.2*(ymax-ymin)),
             (xmin+(xmax-xmin)/2+arrow_magn*x_wind,
             ymax-0.2*(ymax-ymin)+arrow_magn*y_wind))
 
+            if pompy_wind_model:
+                #To make sure the pompy wind model is space-varying, plot the wind vector field
+                velocity_field = wind_field.velocity_field
+                u,v = velocity_field[:,:,0],velocity_field[:,:,1]
 
+                vector_field = plot_dict['vector_field']
+                vector_field.set_UVC(u,v)
 
-            trap_list = []
-            for trap_num, trap_loc in enumerate(traps.param['source_locations']):
-                mask_trap = swarm.trap_num == trap_num
-                trap_cnt = mask_trap.sum()
-                trap_list.append(trap_cnt)
-            total_cnt = sum(trap_list)
-            plt.title('{0}/{1}: {2}'.format(total_cnt,swarm.size,trap_list))
+            if flies:
+                fly_dots = plot_dict['fly_dots']
+                fly_dots.set_offsets(scipy.c_[swarm.x_position,swarm.y_position])
+
+                color_dict = plot_dict['color_dict']
+                fly_colors = [color_dict[mode] for mode in swarm.mode]
+                fly_dots.set_color(fly_colors)
+
+                trap_list = []
+                for trap_num, trap_loc in enumerate(traps.param['source_locations']):
+                    mask_trap = swarm.trap_num == trap_num
+                    trap_cnt = mask_trap.sum()
+                    trap_list.append(trap_cnt)
+                total_cnt = sum(trap_list)
+                plt.title('{0}/{1}: {2}'.format(total_cnt,swarm.size,trap_list))
 
             '''plot the odor concentration field'''
             conc_array = (
@@ -166,7 +174,12 @@ puff_horizontal_diffusion=1.,plot_scale = 2.0,puff_mol_amount=1.):
 wind_data_file = '2017_10_26_wind_vectors_1_min_pre_60_min_post_release.csv'
 
 
-run_small_sim('small_scale_sim',270.,0.1,
-t_stop=180.,display_speed=1, wind_slippage = (0.,0.),
-swarm_size=100,dt=0.25,wind_dt=5,wind_data_file=wind_data_file,
-wind_speed=0.5,upper_threshold=0.001,schmitt_trigger=False)
+# run_small_sim('small_scale_sim',270.,0.1,
+# t_stop=180.,display_speed=1, wind_slippage = (0.,0.),
+# swarm_size=100,dt=0.25,wind_dt=5,wind_data_file=wind_data_file,
+# wind_speed=0.5,upper_threshold=0.001,schmitt_trigger=False)
+
+run_small_sim('small_scale_sim_turb',270.,0.1,
+t_stop=60.,display_speed=20, wind_slippage = (0.,0.),
+swarm_size=100,dt=0.01,wind_dt=5,wind_data_file=wind_data_file,flies=False,
+wind_speed=0.5,upper_threshold=0.001,schmitt_trigger=False,pompy_wind_model=True)

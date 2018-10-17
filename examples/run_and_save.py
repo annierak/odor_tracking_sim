@@ -33,20 +33,21 @@ heading_mean=None,track_plume_bouts=False,long_casts = False):
         puff_mol_amount=None
 
     output_file = file_name+'.pkl'
-    #Create wind field,
-    #Release delay is in minutes
-    wind_field=srt.setup_wind_field(wind_angle,wind_data_file,dt,
-    release_delay,wind_dt=wind_dt,wind_speed=wind_speed)
-
-    # if wind_field.param['negative_time']>0:
-    #     release_delay=wind_field.param['negative_time']
-
     # Create circular trap setup, set source locations and strengths
     if number_sources>1:
         radius_sources = 1000.0
     else:
         radius_sources = 400.0
-    traps = srt.setup_traps(number_sources=number_sources,radius_sources=radius_sources)
+        traps = srt.setup_traps(number_sources=number_sources,radius_sources=radius_sources)
+
+    #Create wind field,
+    #Release delay is in minutes
+    wind_field=srt.setup_wind_field(wind_angle,wind_data_file,dt,
+    release_delay,traps,plot_scale,wind_dt=wind_dt,wind_speed=wind_speed)
+
+    # if wind_field.param['negative_time']>0:
+    #     release_delay=wind_field.param['negative_time']
+
 
 
     odor_plot_param,odor_field,plumes = srt.setup_odor_field(wind_field,traps,

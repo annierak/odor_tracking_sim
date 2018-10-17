@@ -41,13 +41,21 @@ class BasicSwarmOfFlies(object):
                 'lower': 0.002,
                 'upper': 0.004
                 },
+            'cast_timeout':20,
             'odor_probabilities'  : {
                 'lower': 0.9,    # detection probability/sec of exposure
                 'upper': 0.002,  # detection probability/sec of exposure
                 },
             'schmitt_trigger' : True,
+            'low_pass_filter_length':3,
             'reset_distribution': scipy.stats.uniform(0,2*scipy.pi),
+            'pure_advection': False
             }
+
+    #If the fly is doing pure_advection, it is carried by the wind whenever it
+    #is in startmode. This is implemented by assigning  wind_slippage to 0,0),
+    #AND ignoring the x, y velocities when updating position when in startmode,
+    #instead just updating position using the wind velocities. (see .update_positions)
 
     Mode_StartMode = 0
     Mode_FlyUpWind = 1
@@ -59,22 +67,22 @@ class BasicSwarmOfFlies(object):
     track_plume_bouts=False,track_arena_exits=False,long_casts = False): #default start type is fixed heading
         self.param = dict(self.DefaultParam)
         self.param.update(param)
-        self.check_param()
         self.dt = self.param['dt']
         self.dt_plot=self.param['dt_plot']
         self.t_stop = self.param['t_stop']
         self.x_position = self.param['x_start_position']
         self.y_position = self.param['y_start_position']
+        self.lp_filter_duration = int(self.param['low_pass_filter_length']/self.dt) # in multiples of dt
         self.track_plume_bouts = track_plume_bouts
         self.track_arena_exits=track_arena_exits
         self.num_traps = traps.num_traps
         if self.track_arena_exits:
             self.still_in_arena = scipy.full(scipy.shape(self.x_position),True,dtype=bool)
         if(not(self.param['heading_data']==None)):
-            heading_data = self.param['heading_data']
-            (mean,kappa) = fit_von_mises(heading_data)
+            (mean,kappa) = fit_von_mises(self.param['heading_data'])
             self.param['initial_heading_dist'] = scipy.stats.vonmises(loc=mean,kappa=kappa)
             self.param['initial_heading'] = scipy.random.vonmises(mean,kappa,(self.param['swarm_size'],))
+        self.check_param()
         self.x_velocity = self.param['flight_speed']*scipy.cos(self.param['initial_heading'])
         self.y_velocity = self.param['flight_speed']*scipy.sin(self.param['initial_heading'])
         self.mode = scipy.full((self.size,), self.Mode_StartMode, dtype=int)
@@ -84,7 +92,7 @@ class BasicSwarmOfFlies(object):
         self.time_began_casting = scipy.full(self.size,scipy.inf)
         self.reset_distribution = self.param['reset_distribution']
         self.reset_pool = self.reset_distribution.rvs(2000)
-        self.cast_timeout = 20
+        self.cast_timeout = self.param['cast_timeout']
         self.reset_pool_counter = 0
         #for the case of the low pass filter, a vector that tracks time
         #since plume update_for_odor_loss
@@ -115,8 +123,11 @@ class BasicSwarmOfFlies(object):
         plt.close()
         self.cast_sign = scipy.random.choice([-1,1],(self.size,))
 
+        if self.param['pure_advection']:
+            self.param['wind_slippage'] = (0,0)
         self.parallel_coeff,self.perp_coeff = self.param['wind_slippage']
-        self.par_wind,self.perp_wind = self.get_par_perp_comps(0.,wind_field)
+        self.par_wind,self.perp_wind = self.get_par_perp_comps(0.,wind_field,
+            scipy.full((self.size,),True,dtype=bool))
         #^This is the set of 2 x time arrays of the components of each fly's velocity par/perp to wind
         self.ever_tracked = scipy.full((self.size,), False, dtype=bool) #Bool that keeps track if the fly ever plume tracked (false=never tracked)
         self.trap_num = scipy.full((self.size,),-1, dtype=int)
@@ -131,6 +142,9 @@ class BasicSwarmOfFlies(object):
         else:
             self.rw_dist = None
 
+        #push back release time by release delay
+        # self.param['release_time'] += self.param['release_delay']
+
     def check_param(self):
         """
         Check parameters - mostly just that shape of ndarrays match
@@ -141,6 +155,8 @@ class BasicSwarmOfFlies(object):
         equal_shape_list = ['x_start_position','y_start_position','flight_speed','release_time']
         for item in equal_shape_list:
             if self.param[item].shape != self.param['initial_heading'].shape:
+                print(item)
+                print(self.param[item].shape,self.param['initial_heading'].shape)
                 raise(ValueError, '{0}.shape must equal initial_heading.shape'.format(item))
 
 
@@ -149,7 +165,8 @@ class BasicSwarmOfFlies(object):
         return self.param['initial_heading'].shape[0]
 
 
-    def update(self, t, dt, wind_field, odor_field,traps,plumes=None,xlim=None,ylim=None):
+    def update(self, t, dt, wind_field, odor_field,traps,plumes=None,
+        xlim=None,ylim=None,pre_stored=False):
         """
         Update fly swarm one time step.
         """
@@ -163,22 +180,35 @@ class BasicSwarmOfFlies(object):
         mask_startmode = mask_release & (self.mode == self.Mode_StartMode)
         mask_flyupwd = mask_release & (self.mode == self.Mode_FlyUpWind)
         mask_castfor = mask_release & (self.mode == self.Mode_CastForOdor)
+
+
         print(str(sum(mask_castfor))+' flies are casting')
         print(str(sum(mask_flyupwd))+' flies are surging')
         #Keep track of which flies have never tracked
         self.ever_tracked = self.ever_tracked | (mask_release & (self.mode == self.Mode_FlyUpWind)) #this is true if the fly has previously tracked or has been released and is now in upwind mode
         print('time categorizing flies: '+str(time.time()-last))
         last = time.time()
+        mask_trapped = self.mode == self.Mode_Trapped
         # Get odor value and wind vectors at current position and time for each fly
+        #EXCLUDING THE FLIES THAT ARE PRE-DEPARTURE AND THE TRAPPED FLIES
+        odor = scipy.full(self.size,scipy.nan)
+        mask_odor_relevant = mask_release & (~mask_trapped)
         if isinstance(odor_field,FakeDiffusionOdorField):
-            odor = odor_field.value(t,self.x_position,self.y_position)
+            odor[mask_odor_relevant] = odor_field.value(
+                t,self.x_position[mask_odor_relevant],self.y_position[mask_odor_relevant])
+        elif pre_stored:
+            odor[mask_odor_relevant] = odor_field.value(
+                t,self.x_position[mask_odor_relevant],self.y_position[mask_odor_relevant])
         else:
-            odor= odor_field.calc_conc_list(puff_array, self.x_position,self.y_position, z=0)
+            odor[mask_odor_relevant]= odor_field.calc_conc_list(
+                puff_array, self.x_position[mask_odor_relevant],\
+                    self.y_position[mask_odor_relevant], z=0)
+        print('time obtaining odor info: '+str(time.time()-last))
+        last = time.time()
         x_wind, y_wind = wind_field.value(t,self.x_position, self.y_position)
-        print(x_wind[0],y_wind[0])
         x_wind_unit, y_wind_unit = unit_vector(x_wind, y_wind)
         wind_uvecs = {'x': x_wind_unit,'y': y_wind_unit}
-        print('time obtaining odor and wind info: '+str(time.time()-last))
+        print('time obtaining wind info: '+str(time.time()-last))
         last = time.time()
         if not(self.start_type=='cvrw' or self.start_type=='rw'):
             #The random walk mode excludes odor detection
@@ -189,7 +219,7 @@ class BasicSwarmOfFlies(object):
             #cast or surge mode based on the new wind direction this time step
             self.update_for_changing_wind(masks,wind_uvecs)
 
-            # Update state for flies detectoring odor plumes
+            # Update state for flies detecting odor plumes
             self.update_for_odor_detection(dt, odor, wind_uvecs, masks)
             print('time updating for odor detection: '+str(time.time()-last))
             last = time.time()
@@ -210,7 +240,7 @@ class BasicSwarmOfFlies(object):
         # Update position based on mode and current velocities
         mask_trapped = self.mode == self.Mode_Trapped
 
-        self.update_positions(mask_release,mask_trapped,mask_startmode,dt)
+        self.update_positions(mask_release,mask_trapped,mask_startmode,x_wind,y_wind,dt)
 
         #check for flies that have left the arena
         if self.track_arena_exits:
@@ -229,12 +259,13 @@ class BasicSwarmOfFlies(object):
         #Michael's idea 2/27/18: apply wind slippage according to c_1*(component
         #parallel to fly's velocity) + c2*(component pe rp to fly's velocity)
 
-        self.update_par_perp_comps(t,wind_field,mask_release,mask_startmode)
+        self.update_par_perp_comps(t,wind_field,mask_release,mask_startmode,mask_trapped)
         #par/perp comps for flys not {released and in fly mode} are set to 0.
         c1 = self.parallel_coeff
         c2 = self.perp_coeff
         self.x_position[mask_startmode] += dt*(c1*self.par_wind[0,mask_startmode]+c2*self.perp_wind[0,mask_startmode])
         self.y_position[mask_startmode] += dt*(c1*self.par_wind[1,mask_startmode]+c2*self.perp_wind[1,mask_startmode])
+
 
 
     def update_for_changing_wind(self,masks,wind_uvecs):
@@ -353,11 +384,11 @@ class BasicSwarmOfFlies(object):
             #Filter by the flies who are surging
             mask_candidates = mask_blw_thres & mask_flyupwd
             #If the fly's counter is at 0, or at 1, add 1 to the counter and do nothing (preserve mode)
-            mask_categ1 = mask_candidates & ((self.surging_plumeless_count==0) | (self.surging_plumeless_count==1))
+            mask_categ1 = mask_candidates & (self.surging_plumeless_count<self.lp_filter_duration)
             self.surging_plumeless_count[mask_categ1] +=1
             self.mode[mask_categ1] = self.Mode_FlyUpWind
             #If the fly's counter is at 2, assign to casting mode, and reset counter to 0
-            mask_change = mask_candidates & (self.surging_plumeless_count==2)
+            mask_change = mask_candidates & (self.surging_plumeless_count==self.lp_filter_duration)
             self.surging_plumeless_count[mask_change] =0
 
         #In both cases set mask_change to cast for odor mode
@@ -458,6 +489,7 @@ class BasicSwarmOfFlies(object):
             self.y_velocity[mask_trapped] = 0.0
 
 
+
     def get_time_trapped(self,trap_num=None,straight_shots=False):
         #adjusted this function to isolate flies that went straight to traps
         mask_trapped = self.mode == self.Mode_Trapped
@@ -496,11 +528,18 @@ class BasicSwarmOfFlies(object):
         all_trap_counts[trap_num_array] = trap_counts
         return all_trap_counts
 
-    def update_positions(self,mask_release,mask_trapped,mask_startmode,dt):
+    def update_positions(self,mask_release,mask_trapped,mask_startmode,x_wind,y_wind,dt):
+
         if self.start_type=='fh' or sum(mask_startmode)<1.:
             mask_move = mask_release & (~mask_trapped)
-            self.x_position[mask_move] += dt*self.x_velocity[mask_move]
-            self.y_position[mask_move] += dt*self.y_velocity[mask_move]
+            if self.param['pure_advection']:
+                self.x_position[mask_startmode] += dt*x_wind[mask_startmode]
+                self.y_position[mask_startmode] += dt*y_wind[mask_startmode]
+                self.x_position[mask_move& (~mask_startmode)] += dt*self.x_velocity[mask_move& (~mask_startmode)]
+                self.y_position[mask_move& (~mask_startmode)] += dt*self.y_velocity[mask_move& (~mask_startmode)]
+            else:
+                self.x_position[mask_move] += dt*self.x_velocity[mask_move]
+                self.y_position[mask_move] += dt*self.y_velocity[mask_move]
         elif self.start_type=='rw':
             #The flies who are not in start_mode move the same way
             mask_move = mask_release & (~mask_trapped) & (~mask_startmode)
@@ -561,10 +600,13 @@ class BasicSwarmOfFlies(object):
                 #print(cp4-cp)
 
 
-    def get_par_perp_comps(self,t,wind_field):
-        x_wind, y_wind = wind_field.value(t,self.x_position, self.y_position)
+    def get_par_perp_comps(self,t,wind_field,mask_not_stuck):
+        #Excludes indices of flies not moving
+        x_wind, y_wind = wind_field.value(
+            t,self.x_position[mask_not_stuck], self.y_position[mask_not_stuck])
         wind = scipy.array([x_wind,y_wind])
-        velocity = scipy.array([self.x_velocity,self.y_velocity])
+        velocity = scipy.array([
+            self.x_velocity[mask_not_stuck],self.y_velocity[mask_not_stuck]])
         par_vec = scipy.zeros(scipy.shape(velocity))
         perp_vec = scipy.zeros(scipy.shape(velocity))
         for i in range(scipy.size(velocity,1)):
@@ -572,10 +614,12 @@ class BasicSwarmOfFlies(object):
             par,perp = par_perp(v,u)
             par_vec[:,i],perp_vec[:,i] = par,perp
         return par_vec,perp_vec
-    def update_par_perp_comps(self,t,wind_field,mask_release,mask_startmode):
+    def update_par_perp_comps(self,t,wind_field,mask_release,mask_startmode,mask_trapped):
         #Check if the wind field has changed since last time-step, if so, re-compute get_par_perp_comps
         if wind_field.evolving:
-            self.par_wind,self.perp_wind = self.get_par_perp_comps(t,wind_field)
+            mask_not_stuck = scipy.logical_not(mask_trapped)
+            self.par_wind[:,mask_not_stuck],self.perp_wind[:,mask_not_stuck] = \
+                self.get_par_perp_comps(t,wind_field,mask_not_stuck)
         #Set the flys who have been release and who are not in start_mode to zero par and zero perp
         self.par_wind[:,mask_release&~mask_startmode] = 0.
         self.perp_wind[:,mask_release&~mask_startmode] = 0.

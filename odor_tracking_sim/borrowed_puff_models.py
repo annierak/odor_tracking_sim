@@ -105,9 +105,9 @@ class PlumeModel(object):
     """
 
     def __init__(self, sim_region, source_pos, wind_model, model_z_disp=True,
-                 centre_rel_diff_scale=2., puff_init_rad=0.03,
+                 centre_rel_diff_scale=1.5, puff_init_rad=0.03,
                  puff_spread_rate=0.001, puff_release_rate=10,
-                 init_num_puffs=50, max_num_puffs=25000, prng=scipy.random):
+                 init_num_puffs=10, max_num_puffs=25000, prng=scipy.random):
         """
         Parameters
         ----------
@@ -544,7 +544,7 @@ class ConcentrationArrayGenerator(object):
 
         vmin = 0.0
         # vmax = 5e4 #value used by Graham
-        vmax = 100.
+        vmax = 20.
         # vmax= 20.*(self.puff_mol_amount/1000.) #empirically observed scaling
         #(for parameters used until 5/15) lol
     #    t = matplotlib.colors.LogNorm(vmin=vmin,vmax=vmax)

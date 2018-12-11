@@ -1,6 +1,7 @@
 from __future__ import print_function
 import scipy
 import scipy.stats
+import numpy as np
 import matplotlib.pyplot as plt
 import time
 from odor_models import FakeDiffusionOdorField
@@ -64,7 +65,14 @@ class BasicSwarmOfFlies(object):
 
 
     def __init__(self,wind_field,traps,param={},start_type='fh',
-    track_plume_bouts=False,track_arena_exits=False,long_casts = False): #default start type is fixed heading
+    track_plume_bouts=False, #track each fly's plume interaction history
+    track_arena_exits=False #track each fly leaving the grid
+        ):
+
+    #default start type is fixed heading
+
+        '''Basic parameters'''
+
         self.param = dict(self.DefaultParam)
         self.param.update(param)
         self.dt = self.param['dt']
@@ -72,20 +80,27 @@ class BasicSwarmOfFlies(object):
         self.t_stop = self.param['t_stop']
         self.x_position = self.param['x_start_position']
         self.y_position = self.param['y_start_position']
-        self.lp_filter_duration = int(self.param['low_pass_filter_length']/self.dt) # in multiples of dt
-        self.track_plume_bouts = track_plume_bouts
-        self.track_arena_exits=track_arena_exits
+        self.distance_to_origin = scipy.zeros((self.size))
         self.num_traps = traps.num_traps
+
+        '''Initial departure parameters and variables'''
         if self.track_arena_exits:
             self.still_in_arena = scipy.full(scipy.shape(self.x_position),True,dtype=bool)
         if(not(self.param['heading_data']==None)):
+            ##If heading data field is provided to init, any mu/kappa information will be OVERRIDDEN
             (mean,kappa) = fit_von_mises(self.param['heading_data'])
             self.param['initial_heading_dist'] = scipy.stats.vonmises(loc=mean,kappa=kappa)
             self.param['initial_heading'] = scipy.random.vonmises(mean,kappa,(self.param['swarm_size'],))
-        self.check_param()
+            self.check_param()
         self.x_velocity = self.param['flight_speed']*scipy.cos(self.param['initial_heading'])
         self.y_velocity = self.param['flight_speed']*scipy.sin(self.param['initial_heading'])
         self.mode = scipy.full((self.size,), self.Mode_StartMode, dtype=int)
+
+        self.track_arena_exits=track_arena_exits
+
+        '''Plume tracking related parameters and variables'''
+        self.lp_filter_duration = int(self.param['low_pass_filter_length']/self.dt) # in multiples of dt
+        self.track_plume_bouts = track_plume_bouts
         self.surging_error = scipy.zeros((self.size,))
         self.t_last_cast = scipy.zeros((self.size,))
         #Parameters relating to cast timeout.
@@ -113,14 +128,8 @@ class BasicSwarmOfFlies(object):
         #(300/3.0)/0.25*
         #scipy.exp(0))
 
-        if long_casts:
-             self.param['cast_interval'] = [50,100]
         cast_interval = self.param['cast_interval']
         self.dt_next_cast = scipy.random.uniform(cast_interval[0], cast_interval[1], (self.size,))
-        # plt.figure(11)
-        # plt.hist(self.dt_next_cast);plt.show()
-        # time.sleep(15)
-        plt.close()
         self.cast_sign = scipy.random.choice([-1,1],(self.size,))
 
         if self.param['pure_advection']:
@@ -144,6 +153,7 @@ class BasicSwarmOfFlies(object):
 
         #push back release time by release delay
         # self.param['release_time'] += self.param['release_delay']
+
 
     def check_param(self):
         """
@@ -171,12 +181,13 @@ class BasicSwarmOfFlies(object):
         Update fly swarm one time step.
         """
 
-
         last = time.time()
         if plumes is not None:
             puff_array = plumes.puff_array
         # Get masks for selecting fly based on mode
         mask_release = t > self.param['release_time']
+
+
         mask_startmode = mask_release & (self.mode == self.Mode_StartMode)
         mask_flyupwd = mask_release & (self.mode == self.Mode_FlyUpWind)
         mask_castfor = mask_release & (self.mode == self.Mode_CastForOdor)
@@ -265,7 +276,6 @@ class BasicSwarmOfFlies(object):
         c2 = self.perp_coeff
         self.x_position[mask_startmode] += dt*(c1*self.par_wind[0,mask_startmode]+c2*self.perp_wind[0,mask_startmode])
         self.y_position[mask_startmode] += dt*(c1*self.par_wind[1,mask_startmode]+c2*self.perp_wind[1,mask_startmode])
-
 
 
     def update_for_changing_wind(self,masks,wind_uvecs):
@@ -532,6 +542,7 @@ class BasicSwarmOfFlies(object):
 
         if self.start_type=='fh' or sum(mask_startmode)<1.:
             mask_move = mask_release & (~mask_trapped)
+            print('number moving: '+str(scipy.sum(mask_move)))
             if self.param['pure_advection']:
                 self.x_position[mask_startmode] += dt*x_wind[mask_startmode]
                 self.y_position[mask_startmode] += dt*y_wind[mask_startmode]
@@ -540,6 +551,7 @@ class BasicSwarmOfFlies(object):
             else:
                 self.x_position[mask_move] += dt*self.x_velocity[mask_move]
                 self.y_position[mask_move] += dt*self.y_velocity[mask_move]
+
         elif self.start_type=='rw':
             #The flies who are not in start_mode move the same way
             mask_move = mask_release & (~mask_trapped) & (~mask_startmode)
@@ -598,6 +610,8 @@ class BasicSwarmOfFlies(object):
                     scipy.exp(mu)))
                 #cp4 = time.time(); print(cp4-cp3)
                 #print(cp4-cp)
+        #Once positions are updated, update the variable that keeps track of distance to origin
+        self.distance_to_origin = scipy.sqrt(self.x_position**2+self.y_position**2)
 
 
     def get_par_perp_comps(self,t,wind_field,mask_not_stuck):

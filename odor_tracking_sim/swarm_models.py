@@ -5,6 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time
 from odor_models import FakeDiffusionOdorField
+from pompy import models
 
 from utility import unit_vector
 from utility import rotate_vecs
@@ -206,14 +207,13 @@ class BasicSwarmOfFlies(object):
         if isinstance(odor_field,FakeDiffusionOdorField):
             odor[mask_odor_relevant] = odor_field.value(
                 t,self.x_position[mask_odor_relevant],self.y_position[mask_odor_relevant])
+        elif isinstance(odor_field,models.SuttonModelPlume):
+            odor[mask_odor_relevant] = odor_field.value(
+                self.x_position[mask_odor_relevant],self.y_position[mask_odor_relevant])
+
         elif pre_stored:
             odor[mask_odor_relevant] = odor_field.value(
                 t,self.x_position[mask_odor_relevant],self.y_position[mask_odor_relevant])
-            print(odor[mask_odor_relevant])
-            if(np.sum(self.mode == self.Mode_FlyUpWind)>0):
-                time.sleep(1)
-            print('-----odor thresholds:'+str(self.param['odor_thresholds'])+'----------')
-
         else:
             odor[mask_odor_relevant]= odor_field.calc_conc_list(
                 puff_array, self.x_position[mask_odor_relevant],\

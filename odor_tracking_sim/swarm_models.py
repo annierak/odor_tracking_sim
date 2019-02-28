@@ -207,7 +207,8 @@ class BasicSwarmOfFlies(object):
         if isinstance(odor_field,FakeDiffusionOdorField):
             odor[mask_odor_relevant] = odor_field.value(
                 t,self.x_position[mask_odor_relevant],self.y_position[mask_odor_relevant])
-        elif isinstance(odor_field,models.SuttonModelPlume):
+        elif isinstance(odor_field,models.SuttonModelPlume) or \
+            isinstance(odor_field,models.GaussianFitPlume):
             odor[mask_odor_relevant] = odor_field.value(
                 self.x_position[mask_odor_relevant],self.y_position[mask_odor_relevant])
 
@@ -397,9 +398,16 @@ class BasicSwarmOfFlies(object):
             mask_change = dice_roll < odor_probability_upper
         else:
         #Case where mask_change (to surging) is determined by low-pass filter
-            mask_gt_upper = odor >= self.param['odor_thresholds']['upper']
-            mask_change = mask_gt_upper & (mask_startmode | mask_castfor)
+            if not(isinstance(odor_field,models.SuttonModelPlume) or \
+                isinstance(odor_field,models.GaussianFitPlume)):
+                #This is where the odor is deterministically accessed, as for pompy plumes
+                mask_gt_upper = odor >= self.param['odor_thresholds']['upper']
+            else:
+                #For the GaussianFitPlume, the odor value is interpreted as
+                #the probability the odor is greater than the threshold
+                mask_gt_upper = np.random.binomial(1,odor,size=np.shape(odor)).astype(bool)
 
+            mask_change = mask_gt_upper & (mask_startmode | mask_castfor)
         #In both cases the mask_change flies are assigned to Mode_FlyUpWind
         self.mode[mask_change] = self.Mode_FlyUpWind
         if self.track_plume_bouts:
@@ -448,8 +456,18 @@ class BasicSwarmOfFlies(object):
             odor_probability_lower = 1.0 - (1.0 - self.param['odor_probabilities']['lower'])**dt
             mask_change = dice_roll < odor_probability_lower
         else:
-            #Find the indices of the flys below the (single) threshold
-            mask_blw_thres = odor <= self.param['odor_thresholds']['upper']
+            if not(isinstance(odor_field,models.SuttonModelPlume) or \
+                isinstance(odor_field,models.GaussianFitPlume)):
+
+                #Find the indices of the flys below the (single) threshold
+                mask_blw_thres = odor <= self.param['odor_thresholds']['upper']
+            else:
+                #For the GaussianFitPlume, the odor value is interpreted as
+                #the probability the odor is greater than the threshold--
+                #so it's under the threshold with probability (1 - odor value)
+                mask_blw_thres = np.random.binomial(1,1.-odor,size=np.shape(odor)).astype(bool)
+
+
             #Filter by the flies who are surging
             mask_candidates = mask_blw_thres & mask_flyupwd
             #If the fly's counter is at 0, or at 1, add 1 to the counter and do nothing (preserve mode)

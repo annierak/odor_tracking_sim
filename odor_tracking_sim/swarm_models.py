@@ -13,6 +13,7 @@ from utility import distance
 from utility import par_perp
 from utility import fit_von_mises
 from utility import cartesian_to_polar
+from utility import speed_sigmoid_func
 import utils_find_1st as utf1st
 
 
@@ -152,6 +153,7 @@ class BasicSwarmOfFlies(object):
         self.angle_in_trap = scipy.full(self.size,scipy.inf)
 
 
+
     def check_param(self):
         """
         Check parameters - mostly just that shape of ndarrays match
@@ -208,9 +210,11 @@ class BasicSwarmOfFlies(object):
             odor[mask_odor_relevant] = odor_field.value(
                 t,self.x_position[mask_odor_relevant],self.y_position[mask_odor_relevant])
         elif isinstance(odor_field,models.SuttonModelPlume) or \
-            isinstance(odor_field,models.GaussianFitPlume):
+            isinstance(odor_field,models.GaussianFitPlume) or \
+            isinstance(odor_field,models.AdjustedGaussianFitPlume):
             odor[mask_odor_relevant] = odor_field.value(
                 self.x_position[mask_odor_relevant],self.y_position[mask_odor_relevant])
+
 
         elif pre_stored:
             odor[mask_odor_relevant] = odor_field.value(
@@ -260,7 +264,7 @@ class BasicSwarmOfFlies(object):
             mask_reset_startmode = self.ever_tracked & (self.mode == self.Mode_StartMode)
 
             # Update state for flies detecting odor plumes
-            self.update_for_odor_detection(dt, odor, wind_uvecs, masks)
+            self.update_for_odor_detection(dt, odor,odor_field, wind_uvecs, masks)
 
             #----Update the masks-----
             mask_release = t > self.param['release_time']
@@ -274,7 +278,7 @@ class BasicSwarmOfFlies(object):
             print('time updating for odor detection: '+str(time.time()-last))
             last = time.time()
             # Update state for files losing odor plume or already casting.
-            self.update_for_odor_loss(t, dt, odor, wind_uvecs, masks)
+            self.update_for_odor_loss(t, dt, odor, odor_field, wind_uvecs, masks)
 
             #----Update the masks-----
             mask_release = t > self.param['release_time']
@@ -374,7 +378,7 @@ class BasicSwarmOfFlies(object):
         self.x_velocity[mask_castfor] = self.cast_sign[mask_castfor]*speed*x_unit_change
         self.y_velocity[mask_castfor] = self.cast_sign[mask_castfor]*speed*y_unit_change
 
-    def update_for_odor_detection(self, dt, odor, wind_uvecs, masks):
+    def update_for_odor_detection(self, dt, odor, odor_field, wind_uvecs, masks):
         """
          Update simulation for odor detection
          * Find flies in StartMode and CastForOdor modes where the odor value >= upper threshold.
@@ -430,7 +434,7 @@ class BasicSwarmOfFlies(object):
         self.x_velocity[mask_change] = -speed*x_unit_change
         self.y_velocity[mask_change] = -speed*y_unit_change
 
-    def update_for_odor_loss(self, t, dt, odor, wind_uvecs, masks):
+    def update_for_odor_loss(self, t, dt, odor, odor_field, wind_uvecs, masks):
         """
          Update simulation for flies which lose odor or have lost odor and are
          casting.
@@ -635,10 +639,25 @@ class BasicSwarmOfFlies(object):
                     ,axis=0))
                 signed_wind_par_mags = wind_par_mags*wind_par_signs
                 flight_speed = self.param['flight_speed'][0]
-                adjusted_mag = flight_speed*np.ones_like(signed_wind_par_mags)
-                adjusted_mag[signed_wind_par_mags<-0.8] = signed_wind_par_mags[signed_wind_par_mags<-0.8]+2.4
-                adjusted_mag[signed_wind_par_mags>4.] = signed_wind_par_mags[signed_wind_par_mags>4.]-2.4
-                adjusted_mag = adjusted_mag/flight_speed
+
+                # #Old version: linear/flat/linear function from intended speed to effective speed
+                # adjusted_mag = flight_speed*np.ones_like(signed_wind_par_mags)
+                # adjusted_mag[signed_wind_par_mags<-0.8] = signed_wind_par_mags[signed_wind_par_mags<-0.8]+2.4
+                # adjusted_mag[signed_wind_par_mags>4.] = signed_wind_par_mags[signed_wind_par_mags>4.]-2.4
+                # adjusted_mag[(signed_wind_par_mags<4.)&(signed_wind_par_mags>-0.8)] = 1.6
+                #
+                # plt.figure()
+                # plt.plot(signed_wind_par_mags,adjusted_mag,'o')
+
+                # New version: a sigmoidal smoothing of the above
+                adjusted_mag = speed_sigmoid_func(signed_wind_par_mags)
+                # plt.plot(signed_wind_par_mags,adjusted_mag,'o')
+
+                adjusted_mag = adjusted_mag/flight_speed #normalization to unit mag
+
+                # plt.show()
+                # raw_input()
+
 
                 self.x_position[mask_move&mask_startmode] += dt*adjusted_mag*self.x_velocity[mask_move&mask_startmode]
                 self.y_position[mask_move&mask_startmode] += dt*adjusted_mag*self.y_velocity[mask_move&mask_startmode]

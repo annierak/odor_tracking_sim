@@ -201,6 +201,37 @@ def customaxis(ax, c_left='k', c_bottom='k', c_right='none', c_top='none',
         ax.tick_params(axis='y', direction='out', width=lw, length=7,
                        color=c_right, labelsize=size, pad=pad)
 
+def sigmoid(x,x_0,L,y_0,k):
+    return (x-x_0)+(L/2)+y_0 - L/(np.exp(-k*(x-x_0))+1)
+
+
+def speed_sigmoid_func(x):
+    x_0a = -0.4
+    x_0b = 3.6
+    L = 0.8
+    k = 4.
+    y_0 = 1.6
+    output = np.zeros_like(x)
+    output[(x>=x_0a)&(x<=x_0b)] = 1.6
+    output[x<x_0a] = sigmoid(x[x<x_0a],x_0a,L,y_0,k)
+    output[x>x_0b] = sigmoid(x[x>x_0b],x_0b,L,y_0,k)
+    return output
+
+def fold_across_axis(l,angle):
+    #Given a range list l (even number), connect
+    #the ends of the list to a circle and fold across axis determined by
+    #the wind angle (rad)
+    split_after = np.ceil((angle/(2*np.pi))*len(l))
+    l = np.array(l)
+
+    first_half_inds = np.arange(split_after-len(l)/2+len(l),split_after+len(l),1)%len(l)
+    second_half_inds = np.arange(split_after+len(l),split_after+len(l)/2+len(l),1)%len(l)
+
+    output = np.vstack((first_half_inds,second_half_inds[::-1])).astype(int)
+
+    return [tuple(output[:,i]) for i in range(len(l)/2)]
+
+
 # Testing/development
 # --------------------------------------------------------------------
 if __name__ == '__main__':

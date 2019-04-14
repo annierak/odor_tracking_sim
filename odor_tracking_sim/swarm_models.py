@@ -211,6 +211,7 @@ class BasicSwarmOfFlies(object):
                 t,self.x_position[mask_odor_relevant],self.y_position[mask_odor_relevant])
         elif isinstance(odor_field,models.SuttonModelPlume) or \
             isinstance(odor_field,models.GaussianFitPlume) or \
+            isinstance(odor_field,models.OnlinePlume) or \
             isinstance(odor_field,models.AdjustedGaussianFitPlume):
             odor[mask_odor_relevant] = odor_field.value(
                 self.x_position[mask_odor_relevant],self.y_position[mask_odor_relevant])

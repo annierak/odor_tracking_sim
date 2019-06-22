@@ -231,6 +231,14 @@ def fold_across_axis(l,angle):
 
     return [tuple(output[:,i]) for i in range(len(l)/2)]
 
+# def ray_intersection(origin1,origin2,angle1,angle2):
+    #Given two rays with origins origin1,origin2 and directions angle1,angle2,
+    #return the signed distance of the intersection point to the origin of the
+    #first ray (negative if it's in the opposite direction )
+
+    #use this algorithm
+
+
 
 # Testing/development
 # --------------------------------------------------------------------

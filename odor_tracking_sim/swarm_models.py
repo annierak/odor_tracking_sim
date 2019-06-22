@@ -193,8 +193,8 @@ class BasicSwarmOfFlies(object):
         mask_trapped = self.mode == self.Mode_Trapped
         mask_reset_startmode = self.ever_tracked & (self.mode == self.Mode_StartMode)
 
-        print(str(sum(mask_castfor))+' flies are casting')
-        print(str(sum(mask_flyupwd))+' flies are surging')
+        # print(str(sum(mask_castfor))+' flies are casting')
+        # print(str(sum(mask_flyupwd))+' flies are surging')
         #Keep track of which flies have never tracked
         print('time categorizing flies: '+str(time.time()-last))
         last = time.time()
@@ -653,7 +653,7 @@ class BasicSwarmOfFlies(object):
 
                 # New version: a sigmoidal smoothing of the above
                 adjusted_mag = speed_sigmoid_func(signed_wind_par_mags)
-                # plt.plot(signed_wind_par_mags,adjusted_mag,'o')
+                plt.plot(signed_wind_par_mags,adjusted_mag,'o')
 
                 adjusted_mag = adjusted_mag/flight_speed #normalization to unit mag
 
@@ -968,7 +968,7 @@ class ReducedSwarmOfFlies(object):
         #(the flies that we want to stop from detecting in the next couple frames to
         # avoid double drawing problems):
         mask_in_odor_band = odor>0.01
-        print('----------'+str(np.sum(mask_in_odor_band))+'----------')
+        # print('----------'+str(np.sum(mask_in_odor_band))+'----------')
 
         already_drawn = (mask_in_odor_band & self.mask_in_odor_band_last_step)
 
@@ -1077,12 +1077,15 @@ class ReducedSwarmOfFlies(object):
                 signed_wind_par_mags = wind_par_mags*wind_par_signs
                 flight_speed = self.param['flight_speed'][0]
 
-
                 # New version: a sigmoidal smoothing of the above
                 adjusted_mag = speed_sigmoid_func(signed_wind_par_mags)
-                # plt.plot(signed_wind_par_mags,adjusted_mag,'o')
-
                 adjusted_mag = adjusted_mag/flight_speed #normalization to unit mag
+
+                # plt.figure()
+                # plt.plot(signed_wind_par_mags,adjusted_mag,'o')
+                # plt.show()
+                # raw_input()
+
 
                 self.x_position[mask_move&mask_startmode] += dt*adjusted_mag*self.x_velocity[mask_move&mask_startmode]
                 self.y_position[mask_move&mask_startmode] += dt*adjusted_mag*self.y_velocity[mask_move&mask_startmode]

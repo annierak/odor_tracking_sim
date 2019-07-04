@@ -217,6 +217,54 @@ def speed_sigmoid_func(x):
     output[x>x_0b] = sigmoid(x[x>x_0b],x_0b,L,y_0,k)
     return output
 
+def find_nearest(array, value):
+    #For each element in value, returns the index of array it is closest to.
+    #array should be 1 x n and value should be m x 1
+    idx = (np.abs(array - value)).argmin(axis=1) #this rounds up and down (
+    #of the two values in array closest to value, picks the closer. (not the larger or the smaller)
+    return idx
+
+def sigmoidm(x,x_0,L,y_0,k,m):
+    return m*(x-x_0)+(L/2)+y_0 - L/(np.exp(-k*(x-x_0))+1)
+
+def speed_sigmoid_func_kwarg(x,x_0a=-0.4,x_0b=3.6,
+    L=0.8,k=4.,y_0=1.6,m=1.):
+    output = np.zeros_like(x)
+    output[(x>=x_0a)&(x<=x_0b)] = 1.6
+    output[x<x_0a] = sigmoidm(x[x<x_0a],x_0a,L,y_0,k,m)
+    output[x>x_0b] = sigmoidm(x[x>x_0b],x_0b,L,y_0,k,m)
+    return output
+
+def f_rotated(inputs,x_0a,x_0b,L,k,y_0,m,theta):
+    yl,yu = -4,8
+    buffer = 10
+    num_points = len(inputs)
+    outputs = speed_sigmoid_func_kwarg(inputs,x_0a,x_0b,L,k,y_0,m)
+    rot_mat = np.array([[np.cos(theta),-1.*np.sin(theta)],[np.sin(theta),np.cos(theta)]])
+    rotation_origin = np.array([x_0a+(x_0b-x_0a)/2,y_0])
+    rotation_origin_ones = np.repeat(rotation_origin[:,None],num_points,axis=1)
+    inputs1,outputs1 = np.dot(rot_mat,np.vstack((inputs,outputs))-rotation_origin_ones)+rotation_origin_ones
+    which_inputs = find_nearest(inputs1,inputs[:,None])
+    return outputs1[which_inputs]
+
+def new_speed_sigmoid_func_perfect_controller(x):
+    x_0a = -0.4
+    x_0b= 1.45
+    L=0.8
+    k=4.
+    y_0=1.6
+    m=1.
+    theta=0.
+    return f_rotated(x,x_0a,x_0b,L,k,y_0,m,theta)
+
+
+
+
+
+
+
+
+
 def fold_across_axis(l,angle):
     #Given a range list l (even number), connect
     #the ends of the list to a circle and fold across axis determined by

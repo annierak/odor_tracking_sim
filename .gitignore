@@ -4,6 +4,5 @@
 *.hdf5
 *.pkl
 *.mp4
-*.ipynb
 data_files
 
